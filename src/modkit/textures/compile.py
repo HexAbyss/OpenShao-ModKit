@@ -225,14 +225,35 @@ def init_project(folder):
     return path
 
 
-def compile_folder(folder, out_path, workers=None, encoder=None, progress=None, cancel=None, require_manifest=True):
+def compile_folder(folder, out_path, workers=None, encoder=None, progress=None, cancel=None, require_manifest=True,
+                   info=None, logo=None, preload=None):
     """Builds `out_path` from the edited pictures of `folder`. `progress(done, total)` is called per texture. Raises ValueError, with
-    the reasons in words, when the folder cannot make a pack."""
+    the reasons in words, when the folder cannot make a pack.
+
+    By default the pack's information, logo and preload list come from pack.json, logo.png and preload.txt in the folder. A program can give
+    them instead: `info` (a dict with the same keys as pack.json, which then needs not exist), `logo` (a path or a PIL image) and `preload`
+    (hashes, as integers or 16 hexadecimal digits)."""
     started = time.time()
-    info, logo, preload, warnings = load_project(folder)
+    warnings = []
+    if info is None:
+        info, project_logo, project_preload, warnings = load_project(folder)
+        logo = project_logo if logo is None else logo
+        preload = project_preload if preload is None else preload
+    else:
+        info = {k: v for k, v in dict(info).items() if v not in ('', None)}
+        info.pop('logo', None)
+    if isinstance(logo, (str, os.PathLike)):
+        try:
+            logo = Image.open(logo)
+            logo.load()
+        except Exception as error:
+            warnings.append('the logo cannot be read (%s); the pack has none' % str(error)[:80])
+            logo = None
+    preload = [p if isinstance(p, str) else '%016x' % p for p in (preload or [])]
+    preload = [p.lower() for p in preload]
     problems = ostp.validate_info(info)
     if problems:
-        raise ValueError('pack.json: ' + '; '.join(problems))
+        raise ValueError('pack information: ' + '; '.join(problems))
     scan = scan_folder(folder, workers)
     if scan.manifest_problem and require_manifest:
         raise ValueError('%s, so there is no way to tell which pictures were edited and the whole game would go in the pack. Extract the game '

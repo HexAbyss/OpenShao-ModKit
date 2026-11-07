@@ -25,6 +25,8 @@ game would go in the pack; `--no-manifest` says that every picture in the folder
 into place only after it verifies, so a failed or cancelled build never replaces a good pack. A logo that cannot be read only drops the logo, with a
 warning.
 
+Scripts and AI tools can do the same from Python: see [docs/AUTOMATION.md](docs/AUTOMATION.md) and `examples/`.
+
 ## Commands
 
 ```
@@ -60,7 +62,7 @@ src/modkit/
 native/bc/          the encoder library's C++ sources (rgbcx, stb_dxt) and their licenses
 packaging/          the executable (linux/build.sh)
 tests/              test_modkit.py, and native/ with the check that opens a pack with the game's own reader
-docs/  examples/    guides and automation examples (being written)
+docs/  examples/    the automation guide, and complete example scripts
 ```
 
 ## Tests

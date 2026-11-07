@@ -818,6 +818,108 @@ class DecompressorTest(unittest.TestCase):
         self.assertIn('did not return', why)
 
 
+class ApiTest(unittest.TestCase):
+    """The interface scripts use (modkit.TextureFolder and the functions at the top of the package)"""
+    def folder(self, t, **kwargs):
+        return texture_folder(Path(t) / 'textures', **kwargs)
+
+    def test_the_public_names_load_when_used(self):
+        import modkit
+        for name in modkit.__all__:
+            self.assertTrue(hasattr(modkit, name), name)
+        with self.assertRaises(AttributeError):
+            modkit.nothing_like_this
+
+    def test_a_folder_lists_finds_and_reads_its_textures(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            folder = modkit.TextureFolder(self.folder(t, edited=()))
+            self.assertEqual((len(folder), folder.has_manifest), (4, True))
+            self.assertEqual([x.hash for x in folder], [0x1000, 0x1001, 0x1002, 0x1003])
+            texture = folder.get('%016x' % 0x1001)
+            self.assertEqual((texture.format, texture.width, texture.height, texture.key), ('DXT5', 8, 8, '0000000000001001'))
+            self.assertIs(folder.get(0x1001), texture)
+            self.assertIn(0x1002, folder)
+            self.assertNotIn(0x9999, folder)
+            with self.assertRaises(KeyError):
+                folder.get(0x9999)
+            self.assertEqual(len(folder.find(format='DXT5', max_width=8)), 4)
+            self.assertEqual(folder.find(format='A8R8G8B8'), [])
+            self.assertEqual([x.hash for x in folder.find(where=lambda x: x.hash > 0x1001)], [0x1002, 0x1003])
+            self.assertEqual(folder.array(texture).shape, (8, 8, 4))
+            self.assertEqual(folder.image(texture).mode, 'RGBA')
+
+    def test_saving_a_picture_is_what_makes_it_edited(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            folder = modkit.TextureFolder(self.folder(t, edited=()))
+            texture = folder.get(0x1002)
+            self.assertFalse(folder.is_edited(texture))
+            pixels = folder.array(texture).copy()
+            pixels[0, 0, 0] ^= 1                                  # one bit of one pixel
+            folder.save(texture, pixels)
+            self.assertTrue(folder.is_edited(texture))
+            self.assertEqual([x.hash for x in folder.edited(workers=1)], [0x1002])
+            folder.save(0x1003, folder.image(0x1003).resize((16, 16)))   # a PIL image, twice the size
+            self.assertEqual([x.hash for x in folder.edited(workers=1)], [0x1002, 0x1003])
+            self.assertEqual([f for f in os.listdir(folder.path) if f.endswith('.part')], [])
+
+    def test_a_folder_without_a_manifest_still_lists_its_pictures(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            path = self.folder(t, edited=())
+            (path / 'manifest.json').unlink()
+            folder = modkit.TextureFolder(path)
+            self.assertEqual((len(folder), folder.has_manifest), (4, False))
+            self.assertTrue(folder.is_edited(0x1000), 'no signature: edited')
+            with self.assertRaises(ValueError):
+                modkit.TextureFolder(Path(t) / 'missing')
+
+    def test_a_script_gives_the_pack_information_instead_of_a_file(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            folder = modkit.TextureFolder(self.folder(t, edited=(0, 1)))
+            logo = Path(t) / 'mark.png'
+            Image.fromarray(np.full((8, 8, 4), 200, np.uint8), 'RGBA').save(logo)
+            info = dict(id='FromScript', name='From script', version='1.0.0', authors=['A'], summary='s', min_recomp='0.4.1', website='')
+            out = Path(t) / 'p.ostp'
+            result = folder.compile(out, info=info, logo=logo, preload=[0x1001, '%016X' % 0x1000, 0x7777], workers=1, encoder='rgbcx:0')
+            self.assertTrue(result.verification.ok, result.verification.problems)
+            self.assertEqual(result.verification.logo, (8, 8))
+            self.assertEqual(result.verification.info['id'], 'FromScript')
+            self.assertEqual(result.verification.info['preload'], ['%016x' % 0x1001, '%016x' % 0x1000])
+            self.assertNotIn('website', result.verification.info, 'an empty field is left out')
+            with self.assertRaisesRegex(ValueError, 'pack information'):
+                folder.compile(Path(t) / 'q.ostp', info=dict(info, id='bad id!'), workers=1)
+            self.assertFalse((Path(t) / 'q.ostp').exists())
+
+    def test_pack_entries_lists_what_a_pack_holds(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            path = self.folder(t, edited=(0, 1))
+            write_project(path)
+            out = Path(t) / 'p.ostp'
+            modkit.compile_folder(path, out, workers=1, encoder='rgbcx:0')
+            entries = modkit.pack_entries(out)
+            self.assertEqual([e['hash'] for e in entries], [0x1000, 0x1001])
+            first, second = entries
+            self.assertEqual((first['width'], first['original_width'], first['levels'], first['format'], first['alpha']), (16, 8, 5, 'BC1', False))
+            self.assertEqual((second['format'], second['alpha']), ('BC3', True))
+            self.assertTrue(modkit.verify(out).ok)
+            (Path(t) / 'junk').write_bytes(b'nothing')
+            with self.assertRaises(ValueError):
+                modkit.pack_entries(Path(t) / 'junk')
+
+    def test_check_game_names_what_is_missing(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(modkit.check_game(game_folder(Path(t) / 'game')), [])
+            (Path(t) / 'game' / 'default.xbe').unlink()
+            self.assertEqual(modkit.check_game(Path(t) / 'game'), ['default.xbe'])
+            with self.assertRaises(ValueError):
+                modkit.check_game(Path(t) / 'nowhere')
+
+
 @unittest.skipUnless(os.environ.get('OPENSHAO_TEST_ISO'), 'set OPENSHAO_TEST_ISO to the game image to check against the real game')
 class RealGameTest(unittest.TestCase):
     def test_the_first_entries_match_what_was_extracted_before(self):

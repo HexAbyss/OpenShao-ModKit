@@ -83,3 +83,13 @@ class GameSource:
             except Exception:
                 pass
         self._files = []
+
+
+def check_game(path):
+    """What the game at `path` (an ISO or a folder) lacks for an extraction, as a list of file names; empty when it is complete.
+    Raises SourceError (a ValueError) when the path is not a usable game location at all."""
+    source = GameSource(path)
+    try:
+        return source.check()
+    finally:
+        source.close()
