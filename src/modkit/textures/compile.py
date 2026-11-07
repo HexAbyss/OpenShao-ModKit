@@ -180,6 +180,19 @@ def _encode(job):
     return b''.join(out)
 
 
+def read_preload(folder):
+    """The hashes in preload.txt (one a line, `#` starts a comment), as lower-case text; empty when there is no file"""
+    preload = []
+    path = os.path.join(folder, 'preload.txt')
+    if os.path.isfile(path):
+        with open(path, encoding='utf-8') as f:
+            for line in f:
+                line = line.split('#')[0].strip()
+                if line:
+                    preload.append(line.lower())
+    return preload
+
+
 def load_project(folder):
     """(information, logo picture or None, preload hashes, warnings) from pack.json, logo.png and preload.txt in the folder"""
     path = os.path.join(folder, 'pack.json')
@@ -204,15 +217,7 @@ def load_project(folder):
         elif logo_name != TEMPLATE['logo']:
             raise ValueError('the logo %s named in pack.json is not in the folder' % logo_name)
     info = {k: v for k, v in info.items() if v not in ('', None)}
-    preload = []
-    preload_path = os.path.join(folder, 'preload.txt')
-    if os.path.isfile(preload_path):
-        with open(preload_path, encoding='utf-8') as f:
-            for line in f:
-                line = line.split('#')[0].strip()
-                if line:
-                    preload.append(line.lower())
-    return info, logo, preload, warnings
+    return info, logo, read_preload(folder), warnings
 
 
 def init_project(folder):

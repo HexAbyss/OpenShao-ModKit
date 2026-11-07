@@ -155,7 +155,9 @@ def command_gui(args):
     except ImportError as error:
         print('the graphical interface needs imgui-bundle (%s)' % error, file=sys.stderr)
         return 1
-    return run(game=args.game or '', out=args.out or '', auto=args.auto_extract, limit=args.limit, exit_when_done=args.exit_when_done)
+    auto = 'extract' if args.auto_extract else ('compile' if args.auto_compile else None)
+    return run(game=args.game or '', out=args.out or '', auto=auto, limit=args.limit, exit_when_done=args.exit_when_done, page=args.page,
+               pictures=args.pictures or '', pack=args.pack or '', verify_file=args.verify or '')
 
 
 def main(argv=None):
@@ -185,6 +187,9 @@ def main(argv=None):
     g.add_argument('--game'); g.add_argument('--out')
     g.add_argument('--auto-extract', action='store_true', help=argparse.SUPPRESS)   # for tests of the interface
     g.add_argument('--limit', type=int, help=argparse.SUPPRESS)
+    g.add_argument('--page', help=argparse.SUPPRESS)
+    g.add_argument('--pictures', help=argparse.SUPPRESS); g.add_argument('--pack', help=argparse.SUPPRESS); g.add_argument('--verify', help=argparse.SUPPRESS)
+    g.add_argument('--auto-compile', action='store_true', help=argparse.SUPPRESS)
     g.add_argument('--exit-when-done', action='store_true', help=argparse.SUPPRESS)
     g.set_defaults(run=command_gui)
     args = parser.parse_args(argv)

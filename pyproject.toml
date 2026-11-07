@@ -21,4 +21,4 @@ modkit = "modkit.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-modkit = ["_native/*.so", "_native/*.dll", "_native/*.dylib"]
+modkit = ["_native/*.so", "_native/*.dll", "_native/*.dylib", "gui/fonts/*"]

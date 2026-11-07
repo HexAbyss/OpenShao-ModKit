@@ -44,7 +44,7 @@ same.
 
 **The executable (Linux).** `packaging/linux/build.sh` (needs Docker) builds `dist/modkit`, one file of about 40 MB that runs on any system with
 glibc 2.28 or later, with no Python and nothing to install. It takes the commands above. With no command (double-click) it opens the graphical interface
-(`modkit gui`), which today has the extraction screen: choose the game and a folder, progress with an estimate, cancel.
+(`modkit gui`): Extract, Compile (pack information, logo, quality), Verify and About pages, in the look of the OpenShao launcher (its colours, its typeface, Hanken Grotesk, and the brush circle as the progress of a long job).
 
 **From the source.** Python 3.9 or later with `numpy`, `Pillow` and `unicorn`, and the encoder library: `native/bc/build.sh` (a C++ compiler).
 `pip install -e .` installs the `modkit` command (`pip install -e .[gui]` adds the interface, which needs `imgui-bundle` and OpenGL); without installing, `PYTHONPATH=src python -m modkit ...` does the same. Without the library the
@@ -56,7 +56,7 @@ default encoder falls back to Pillow's and says so (it makes visible errors in s
 ```
 src/modkit/
   cli.py            the command line
-  gui/              the window (Dear ImGui): app.py, and tasks.py that runs the long jobs on a thread
+  gui/              the window (Dear ImGui): app.py (pages), art.py (the launcher's look), widgets.py, tasks.py (long jobs on a thread), fonts/
   xbox/             reading the game: disc image, executable, archive, the game's own decompressor, textures
   pack/             the .ostp format: writer (ostp.py) and the reader that checks a file (reader.py)
   textures/         extract, compile, the pixel signature, the BC encoder

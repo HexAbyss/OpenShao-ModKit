@@ -9,7 +9,7 @@ a = Analysis(
     [os.path.join(root, 'packaging', 'modkit_main.py')],
     pathex=[os.path.join(root, 'src')],
     binaries=[(os.environ['BC_LIB'], 'modkit/_native'), (os.environ['UNICORN_LIB'], 'unicorn/lib')] + imgui_binaries,
-    datas=imgui_datas,
+    datas=imgui_datas + [(os.path.join(root, 'src', 'modkit', 'gui', 'fonts'), 'modkit/gui/fonts')],
     hiddenimports=collect_submodules('unicorn') + collect_submodules('modkit') + imgui_hidden,
 )
 # The window system and the C++ runtime belong to the user's machine: the copies the build system happened to have must not travel with the
