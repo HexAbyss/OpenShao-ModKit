@@ -1,14 +1,14 @@
-"""The look of the OpenShao launcher, drawn the way the launcher draws it (src/launcher_art.cpp in the OpenShao repository): the same
-colours, typeface (Hanken Grotesk, three weights), sizes and shapes, in logical pixels. ImGui scales them for the display.
+"""Visual style of the ModKit window: palette, typeface (Hanken Grotesk, three weights), text sizes and the shapes drawn by hand (buttons,
+links, switch, progress bar, background, brush circle). All measures are in logical pixels; ImGui scales them for the display.
 
-Everything is drawn into the window's draw list through a Canvas, with hit areas from invisible buttons, as the launcher does."""
+Everything is drawn into the window's draw list through a Canvas. Hit areas are invisible buttons placed over the drawn shapes."""
 import math
 import os
 
 import numpy as np
 from imgui_bundle import hello_imgui, imgui, immvision
 
-# ---- colours (the launcher's own) ----
+# ---- palette (0xRRGGBB) ----
 INK, SLATE, LINE, MIST, DIM = 0x25282C, 0x30343A, 0x3B4047, 0x959AA0, 0x6C7278
 PAPER, EMBER, MOSS, WARNING = 0xECE5D6, 0xE0705A, 0x93B79E, 0xE8A15A
 EMBER_HOVER, LINK_HOVER = 0xE8826C, 0xF09A84
@@ -32,7 +32,7 @@ def load_fonts():
 
 
 def apply_style():
-    """The launcher's ImGui style, for the few real widgets (text fields) the program needs"""
+    """Sets the ImGui style used by the real widgets (text fields) and the scroll bars"""
     style = imgui.get_style()
     style.window_padding = (0, 0)
     style.window_border_size = 0
@@ -126,7 +126,7 @@ class Canvas:
 
 
 class Rng:
-    """The launcher's small random generator, so a drawing has the same marks every time"""
+    """Small linear congruential generator: a seeded drawing has the same marks on every run"""
     def __init__(self, seed):
         self.s = seed & 0xFFFFFFFF
 
@@ -174,7 +174,7 @@ def glow(canvas, cx, cy, radius, strength):
         canvas.list.add_circle_filled(canvas.p(cx, cy), radius * (0.75 + 0.95 * i / 18.0), rgb(0x8A3E33, 0.024 * strength), 128)
 
 
-# ---- the ensō: the brush circle, drawn into a picture (the launcher draws it live with the GPU; Python draws it once and keeps it) ----
+# ---- the ensō (brush circle): rendered once into a picture and cached; progress is a mask over that picture ----
 def _smooth(a, b, x):
     t = np.clip((x - a) / (b - a), 0.0, 1.0)
     return t * t * (3 - 2 * t)
@@ -191,7 +191,7 @@ def _flame(t, edge):
 
 
 def enso_base(radius, width, seed=11, bristles=44, supersample=1):
-    """The whole brush circle, as (RGBA array, side, t map). The bristle model is the launcher's (launcher_art.cpp, Enso). The t map says,
+    """The whole brush circle, as (RGBA array, side, t map). Each bristle is a ribbon with its own ink amount, pressure and dryness along the stroke. The t map says,
     for each pixel, how far along the stroke (0 to 1) the ink there was laid, which is what lets a progress be drawn by hiding the part
     of the stroke that has not been reached yet, without drawing the circle again."""
     start, sweep = -112.0 * math.pi / 180.0, 336.0 * math.pi / 180.0
@@ -202,7 +202,7 @@ def enso_base(radius, width, seed=11, bristles=44, supersample=1):
     center = size / 2.0
     big = size * ss
     rng = Rng(seed)
-    over = 4                                          # more points along the stroke than the launcher draws, to make a continuous line
+    over = 4                                          # samples per step along the stroke: dense enough that consecutive discs overlap into a continuous line
     samples = []
     for k in range(bristles):
         o = 0.0 if bristles == 1 else k / (bristles - 1) - 0.5

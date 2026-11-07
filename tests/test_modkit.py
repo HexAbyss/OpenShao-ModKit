@@ -663,8 +663,8 @@ class GameReaderTest(unittest.TestCase):
                 self.assertEqual(read[p.hash], (len(blocks), h), '%016x' % p.hash)
 
 
-class ReviewFixesTest(unittest.TestCase):
-    """Each problem the review of the tool found, kept from coming back"""
+class RobustnessTest(unittest.TestCase):
+    """Error handling of extraction and compilation: unusable input is refused with a reason, and a failed or cancelled build leaves no file"""
     def build(self, t, **kwargs):
         folder = texture_folder(Path(t) / 'textures', **kwargs)
         write_project(folder)

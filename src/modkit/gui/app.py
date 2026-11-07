@@ -1,4 +1,4 @@
-"""The ModKit window, in the launcher's visual identity: Extract, Compile, Verify and About pages, a footer, and the brush circle as the
+"""The ModKit window: Extract, Compile, Verify and About pages, a footer, and the brush circle as the
 progress of a long job."""
 import json
 import os
@@ -398,15 +398,15 @@ class App:
         c.rule(48, right, 200)
         wrap = min(720.0, right - 48)
         c.text(REGULAR, 20, 48, 224, rgb(PAPER), 'The ModKit takes the textures out of your own copy of Mortal Kombat: Shaolin Monks and '
-                                                   'turns the pictures you edit into texture packs for OpenShao. It contains no game files.', wrap)
-        c.text(REGULAR, 19, 48, 296, rgb(MIST), 'It reads your game and keeps nothing of it. The decompression of the game\'s archive runs the game\'s own '
+                                                   'turns the pictures you edit into texture packs for OpenShao. It contains no game files. It is free software under the GNU GPL, version 2 or later.', wrap)
+        c.text(REGULAR, 19, 48, 316, rgb(MIST), 'It reads your game and keeps nothing of it. The decompression of the game\'s archive runs the game\'s own '
                                                   'routine, found in your copy, inside an emulator. The components it is built with:', wrap)
         half = (len(LICENSES) + 1) // 2
         name_w = [max(c.measure(MEDIUM, 18, n)[0] for n, _ in LICENSES[:half]), max(c.measure(MEDIUM, 18, n)[0] for n, _ in LICENSES[half:])]
         column = (right - 48) / 2
         for i, (name, license) in enumerate(LICENSES):
             side = i // half
-            x, y = 48 + side * column, 380 + (i % half) * 30
+            x, y = 48 + side * column, 396 + (i % half) * 30
             c.text(MEDIUM, 18, x, y, rgb(PAPER), name)
             c.text(REGULAR, 18, x + name_w[side] + 24, y, rgb(MIST), license)
 

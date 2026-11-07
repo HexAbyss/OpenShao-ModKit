@@ -1,4 +1,4 @@
-"""The OSTP texture pack file (version 1.1), as docs/FORMATO_PACK.md specifies it.
+"""The OSTP texture pack file, version 1.1 (specified in TEXTURE_PACK_FORMAT.md in the OpenShao repository).
 
 The layout is: a 128 byte header, the metadata (JSON), an optional logo, the index (40 bytes a texture, sorted by hash) and the data (the BC
 blocks of every texture, largest level first, each texture starting on a multiple of 16). The size of every texture's blocks follows from its

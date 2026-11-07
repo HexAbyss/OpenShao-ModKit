@@ -96,8 +96,8 @@ def to_rgba(info,raw):
     else:a=unswizzle(raw,w,h,bpp)
     if n in('A8R8G8B8','LIN_A8R8G8B8'):return a[...,[2,1,0,3]]
     if n in('X8R8G8B8','LIN_X8R8G8B8'):x=a[...,[2,1,0,3]].copy();x[...,3]=255;return x
-    # the names list the channels from the top of the little-endian dword down, as A8R8G8B8 (bytes B,G,R,A in memory) does; the game has
-    # no texture in these two formats, so this follows the rule and is covered by a test, not by a real texture
+    # The names list the channels from the most significant byte of the little-endian dword down, as in A8R8G8B8 (bytes B,G,R,A in memory).
+    # No texture of the supported game uses these two formats; the mapping follows that rule and is covered by a unit test.
     if n in('A8B8G8R8',):return a[...,[0,1,2,3]]
     if n in('R8G8B8A8',):return a[...,[3,2,1,0]]
     if n in('L8','LIN_L8'):g=a[...,0];return np.stack([g,g,g,np.full_like(g,255)],-1)

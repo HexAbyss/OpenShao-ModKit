@@ -1,6 +1,6 @@
 """Compiles a folder of texture pictures into a texture pack (.ostp).
 
-The folder is the one the extraction wrote (docs/MODO_DESENVOLVEDOR.md): PNG files named <hash>_<format>_<width>x<height>.png and a manifest.json
+The folder is the one the extraction wrote: PNG files named <hash>_<format>_<width>x<height>.png and a manifest.json
 with the signature of each picture's pixels. Only the pictures whose pixels differ from their signature go into the pack, the same rule the
 game's developer mode uses. Each is stored with all its mip levels as BC1 (no transparency) or BC3 (transparency), encoded with rgbcx at
 its highest level; the work is spread over several processes.

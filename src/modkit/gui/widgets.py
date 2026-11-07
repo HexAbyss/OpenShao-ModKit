@@ -1,4 +1,5 @@
-"""The launcher's widgets (src/launcher.cpp): a hit area from an invisible button, drawn by hand, with the same hover colours and sizes."""
+"""Hand-drawn widgets (buttons, links, switch, rows, text field). Each is a rectangle in logical pixels: an invisible button gives the hit area
+and hover state, and the shape is drawn into the window's draw list."""
 from imgui_bundle import imgui
 
 from . import art
@@ -42,7 +43,7 @@ def link(id, c, x, y, label, right_aligned=False, enabled=True):
 
 
 def switch(id, c, right, y, on):
-    """The launcher's toggle: returns True when clicked"""
+    """A switch with its right edge at `right`; returns True when clicked"""
     hovered, clicked = item(id, c, right - 38, y, right, y + 22)
     c.toggle(right - 38, y, on, hovered)
     return clicked
@@ -54,7 +55,7 @@ def header(c, title, subtitle):
 
 
 def row(c, y, right, label, value, buttons=1, value_color=MIST, value_x=170):
-    """A settings row as on the Files page: a rule, the label, the value (a long path is shortened) and room for `buttons` buttons"""
+    """A settings row: a rule, the label, the value (a long path is shortened in the middle) and room for `buttons` buttons on the right"""
     c.rule(48, right, y)
     c.text(SEMIBOLD, 20, 48, y + 25, rgb(PAPER), label)
     width = right - value_x - buttons * 96 - 16
@@ -62,7 +63,7 @@ def row(c, y, right, label, value, buttons=1, value_color=MIST, value_x=170):
 
 
 def text_field(id, c, x, y, width, value, hint=''):
-    """A real ImGui text field, in the launcher's colours: (changed, value)"""
+    """An ImGui text field styled to match the other widgets: (changed, value)"""
     imgui.set_cursor_screen_pos(c.p(x, y))
     imgui.set_next_item_width(width)
     imgui.push_font(art._fonts[REGULAR], 19)

@@ -19,7 +19,7 @@ test -f /tmp/done/manifest.json && echo "$NAME: extraction finished, manifest wr
 start --game /iso/game.iso --out /tmp/cancel --auto-extract; sleep 9; shot extracting
 xdotool mousemove 952 586 click 1; sleep 5; shot cancelled; stop
 test ! -f /tmp/cancel/manifest.json && echo "$NAME: cancelled, no manifest"
-# 3. the compilation of the folder the first run made, after doubling three pictures (ImageMagick stands in for the artist)
+# 3. the compilation of the folder the first run made, after doubling three pictures (edited with ImageMagick)
 mogrify -resize 200% $(ls /tmp/done/*.png | head -3)
 cat > /tmp/done/pack.json <<JSON
 {"name": "Smoke", "id": "Smoke", "version": "1.0.0", "authors": ["test"], "summary": "smoke test"}

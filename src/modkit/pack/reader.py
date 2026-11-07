@@ -1,6 +1,7 @@
-"""Checks a texture pack file against docs/FORMATO_PACK.md section 8, in the order the game's reader does it, and reports every problem it finds.
-The game's own reader (src/texture_pack_file.cpp) is the one that decides what the game accepts; this one lets the tool say, before the pack
-is given to anyone, that the file it made is sound."""
+"""Checks a texture pack file against the validation rules of the format (TEXTURE_PACK_FORMAT.md in the OpenShao repository, section 8), in the
+order the game's reader applies them, and reports every problem it finds.
+The reader in the game (src/texture_pack_file.cpp) is authoritative for what the game accepts; this one lets the tool confirm, before a pack
+is distributed, that the file it wrote is sound."""
 import hashlib
 import json
 import os

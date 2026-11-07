@@ -12,14 +12,13 @@ a = Analysis(
     datas=imgui_datas + [(os.path.join(root, 'src', 'modkit', 'gui', 'fonts'), 'modkit/gui/fonts')],
     hiddenimports=collect_submodules('unicorn') + collect_submodules('modkit') + imgui_hidden,
 )
-# The window system and the C++ runtime belong to the user's machine: the copies the build system happened to have must not travel with the
-# program, or they clash with what the graphics driver there was built against.
+# The window system libraries and the C++ runtime come from the host. Bundled copies from the build system are loaded first and clash with
+# the host's graphics driver, which is linked against its own.
 SYSTEM = ('libX11.so', 'libXext.so', 'libXau.so', 'libXdmcp.so', 'libxcb.so', 'libXrender.so', 'libXi.so', 'libXcursor.so', 'libXrandr.so',
           'libXinerama.so', 'libxkbcommon', 'libwayland', 'libdrm', 'libEGL', 'libGL.so', 'libOpenGL', 'libgbm',
-          # the C++ runtime too: the graphics driver of the user's machine is built against its own, and a older copy here would be loaded first
-          # and make the driver fail ("GLIBCXX not found"). Every desktop has it.
+          # the C++ runtime: an older bundled libstdc++ is loaded before the host's and the driver then fails with "GLIBCXX not found"
           'libstdc++.so', 'libgcc_s.so')
-# (only the top-level ones: the wheels' own copies, in *.libs/ with a hash in the name, are what their programs were linked against)
+# Only top-level entries are excluded: the wheels' own copies (in *.libs/, with a hash in the file name) are what their extension modules link to.
 a.binaries = [b for b in a.binaries if '/' in b[0] or not b[0].startswith(SYSTEM)]
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='modkit', console=True, upx=False)
