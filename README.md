@@ -43,11 +43,11 @@ same.
 ## Install
 
 **The executable (Linux).** `packaging/linux/build.sh` (needs Docker) builds `dist/modkit`, one file of about 40 MB that runs on any system with
-glibc 2.28 or later, with no Python and nothing to install. It takes the commands above. With no command it will open the graphical interface,
-which is not built yet.
+glibc 2.28 or later, with no Python and nothing to install. It takes the commands above. With no command (double-click) it opens the graphical interface
+(`modkit gui`), which today has the extraction screen: choose the game and a folder, progress with an estimate, cancel.
 
 **From the source.** Python 3.9 or later with `numpy`, `Pillow` and `unicorn`, and the encoder library: `native/bc/build.sh` (a C++ compiler).
-`pip install -e .` installs the `modkit` command; without installing, `PYTHONPATH=src python -m modkit ...` does the same. Without the library the
+`pip install -e .` installs the `modkit` command (`pip install -e .[gui]` adds the interface, which needs `imgui-bundle` and OpenGL); without installing, `PYTHONPATH=src python -m modkit ...` does the same. Without the library the
 default encoder falls back to Pillow's and says so (it makes visible errors in soft transparency); an encoder asked for by name (`--encoder`,
 `OPENSHAO_BC_ENCODER`) is never swapped: the tool stops instead.
 
@@ -56,12 +56,13 @@ default encoder falls back to Pillow's and says so (it makes visible errors in s
 ```
 src/modkit/
   cli.py            the command line
+  gui/              the window (Dear ImGui): app.py, and tasks.py that runs the long jobs on a thread
   xbox/             reading the game: disc image, executable, archive, the game's own decompressor, textures
   pack/             the .ostp format: writer (ostp.py) and the reader that checks a file (reader.py)
   textures/         extract, compile, the pixel signature, the BC encoder
 native/bc/          the encoder library's C++ sources (rgbcx, stb_dxt) and their licenses
 packaging/          the executable (linux/build.sh)
-tests/              test_modkit.py, and native/ with the check that opens a pack with the game's own reader
+tests/              test_modkit.py, native/ (opens a pack with the game's own reader), gui/ (the window on a virtual screen)
 docs/  examples/    the automation guide, and complete example scripts
 ```
 

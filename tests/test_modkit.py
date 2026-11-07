@@ -920,6 +920,53 @@ class ApiTest(unittest.TestCase):
                 modkit.check_game(Path(t) / 'nowhere')
 
 
+class TaskTest(unittest.TestCase):
+    """The thread that runs a long job for the interface"""
+    def wait(self, task):
+        import time
+        for _ in range(500):
+            if task.finished:
+                return
+            time.sleep(0.01)
+        self.fail('the task did not finish')
+
+    def test_progress_result_and_timing(self):
+        from modkit.gui.tasks import Task, clock
+        def job(progress, cancel):
+            progress(1, 4, 'x')
+            progress(2, 4, 'y')
+            return 'result'
+        task = Task('job', job)
+        self.wait(task)
+        self.assertEqual((task.result, task.error, task.done, task.total, task.extra), ('result', '', 2, 4, 'y'))
+        self.assertEqual(task.fraction, 0.5)
+        self.assertEqual(task.eta, 0.0, 'nothing is left to wait for once it has finished')
+        self.assertEqual((clock(65), clock(3725)), ('1:05', '1:02:05'))
+
+    def test_cancelling_reaches_the_job(self):
+        from modkit.gui.tasks import Task
+        def job(progress, cancel):
+            while not cancel():
+                pass
+            return 'stopped'
+        task = Task('job', job)
+        task.cancel()
+        self.wait(task)
+        self.assertEqual(task.result, 'stopped')
+
+    def test_errors_the_user_can_fix_are_words_and_a_bug_is_named(self):
+        from modkit.gui.tasks import Task
+        def fixable(progress, cancel):
+            raise ValueError('the game is incomplete')
+        def bug(progress, cancel):
+            raise KeyError('oops')
+        a, b = Task('a', fixable), Task('b', bug)
+        self.wait(a)
+        self.wait(b)
+        self.assertEqual(a.error, 'the game is incomplete')
+        self.assertIn('unexpected error (KeyError)', b.error)
+
+
 @unittest.skipUnless(os.environ.get('OPENSHAO_TEST_ISO'), 'set OPENSHAO_TEST_ISO to the game image to check against the real game')
 class RealGameTest(unittest.TestCase):
     def test_the_first_entries_match_what_was_extracted_before(self):

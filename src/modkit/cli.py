@@ -4,6 +4,7 @@
     python -m modkit init <texture folder>
     python -m modkit compile <texture folder> <out.ostp> [--workers N] [--encoder rgbcx:18]
     python -m modkit verify <file.ostp>
+    python -m modkit gui
 """
 import argparse
 import multiprocessing
@@ -148,6 +149,15 @@ def command_verify(args):
     return 1
 
 
+def command_gui(args):
+    try:
+        from .gui.app import run
+    except ImportError as error:
+        print('the graphical interface needs imgui-bundle (%s)' % error, file=sys.stderr)
+        return 1
+    return run(game=args.game or '', out=args.out or '', auto=args.auto_extract, limit=args.limit, exit_when_done=args.exit_when_done)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='modkit', description='OpenShao ModKit %s' % __version__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -171,5 +181,11 @@ def main(argv=None):
     v = sub.add_parser('verify', help='check that a .ostp follows the format')
     v.add_argument('file')
     v.set_defaults(run=command_verify)
+    g = sub.add_parser('gui', help='open the graphical interface')
+    g.add_argument('--game'); g.add_argument('--out')
+    g.add_argument('--auto-extract', action='store_true', help=argparse.SUPPRESS)   # for tests of the interface
+    g.add_argument('--limit', type=int, help=argparse.SUPPRESS)
+    g.add_argument('--exit-when-done', action='store_true', help=argparse.SUPPRESS)
+    g.set_defaults(run=command_gui)
     args = parser.parse_args(argv)
     return args.run(args)
