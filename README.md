@@ -44,7 +44,7 @@ same.
 
 **The executable (Linux).** `packaging/linux/build.sh` (needs Docker) builds `dist/modkit`, one file of about 40 MB that runs on any system with
 glibc 2.28 or later, with no Python and nothing to install. It takes the commands above. With no command (double-click) it opens the graphical interface
-(`modkit gui`): Extract, Compile (pack information, logo, quality), Verify and About pages, in the look of the OpenShao launcher (its colours, its typeface, Hanken Grotesk, and the brush circle as the progress of a long job).
+(`modkit gui`): Extract, Compile (pack information, logo, quality), Verify and About pages, with a brush circle as the progress of a long job.
 
 **From the source.** Python 3.9 or later with `numpy`, `Pillow` and `unicorn`, and the encoder library: `native/bc/build.sh` (a C++ compiler).
 `pip install -e .` installs the `modkit` command (`pip install -e .[gui]` adds the interface, which needs `imgui-bundle` and OpenGL); without installing, `PYTHONPATH=src python -m modkit ...` does the same. Without the library the
@@ -56,7 +56,7 @@ default encoder falls back to Pillow's and says so (it makes visible errors in s
 ```
 src/modkit/
   cli.py            the command line
-  gui/              the window (Dear ImGui): app.py (pages), art.py (the launcher's look), widgets.py, tasks.py (long jobs on a thread), fonts/
+  gui/              the window (Dear ImGui): app.py (pages), art.py (palette and drawing), widgets.py, tasks.py (long jobs on a thread), fonts/
   xbox/             reading the game: disc image, executable, archive, the game's own decompressor, textures
   pack/             the .ostp format: writer (ostp.py) and the reader that checks a file (reader.py)
   textures/         extract, compile, the pixel signature, the BC encoder
@@ -77,3 +77,10 @@ OpenShao source (beside this repository, or `OPENSHAO_REPO`) with `g++` lets the
 - The decompression of the game's archive runs the game's own routine, found in its `default.xbe`, in the Unicorn CPU emulator.
 - The encoder code is rgbcx by Richard Geldreich and stb_dxt by Sean Barrett, both public domain or MIT; their licenses are in `native/bc/`.
 - Code that uses the package with several workers must be guarded by `if __name__ == '__main__':`, because the worker processes start by importing the main program.
+
+## License
+
+The ModKit is free software under the GNU General Public License, version 2 or later (see `LICENSE`), the same as OpenShao. The license does not
+cover the original game's code, assets, names or artwork: the ModKit contains none of them and you use your own copy. The components it is built
+with keep their own licenses, all compatible with the GPL: Dear ImGui and imgui-bundle (MIT), NumPy (BSD-3-Clause), Pillow (MIT-CMU), Unicorn Engine
+(GPL-2.0), rgbcx and stb_dxt (public domain or MIT, in `native/bc/`) and Hanken Grotesk (SIL Open Font License 1.1, in `src/modkit/gui/fonts/`).
