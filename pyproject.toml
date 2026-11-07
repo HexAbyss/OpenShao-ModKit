@@ -7,8 +7,9 @@ name = "openshao-modkit"
 version = "0.1.0"
 description = "Extract the textures of Mortal Kombat: Shaolin Monks from your own copy and compile edited pictures into OpenShao texture packs (.ostp)."
 readme = "README.md"
+classifiers = ["License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)"]
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = { text = "GPL-2.0-or-later" }
 dependencies = ["numpy", "Pillow", "unicorn>=2"]
 
 [project.optional-dependencies]
