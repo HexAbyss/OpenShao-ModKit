@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+/dist/
+/build/
+*.egg-info/
+
+# the compiled BC encoder: built by native/bc/build.sh
+src/modkit/_native/*.so
+src/modkit/_native/*.dll
+src/modkit/_native/*.dylib
+
+# the game and what comes out of it are the user's, never ours
+*.iso
+*.xiso
+*.xbe
+*.wad
+*.wa[d-z]
