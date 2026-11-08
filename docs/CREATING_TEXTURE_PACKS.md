@@ -27,7 +27,7 @@ Other guides: [what the game's textures are](TEXTURES.md), [when something goes 
                                                             MyPack.ostp  ──▶  OpenShao: Mods ▸ Install from file
 ```
 
-The ModKit has a window (open `modkit` with no command) and a command line (`modkit extract`, `modkit compile`, ...); both do the same work. This
+The ModKit has a window (on Windows, open `OpenShao-ModKit.exe`; on Linux, `modkit` with no command) and a command line (`modkit extract`, `modkit compile`, ...); both do the same work. This
 guide shows the window first and the command beside it.
 
 **Opening it on Windows for the first time.** `OpenShao-ModKit.exe` is not signed with a paid code-signing certificate, so Windows SmartScreen
