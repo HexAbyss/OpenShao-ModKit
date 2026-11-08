@@ -39,6 +39,21 @@ if [ -n "$LAUNCHER" ]; then
     for i in $(seq 1 100); do [ -n "$(xdotool search --name "OpenShao ModKit" 2>/dev/null | head -1)" ] && break; sleep 0.1; done
     echo "$NAME: launcher opened the window after $(echo "$(date +%s.%N) - $t0" | bc) s"
     sleep 2; shot launched; stop
+    # 6. two monitors, the primary one on the right: the splash screen is in the middle of that one, not between the two
+    Xvfb :98 -screen 0 2560x800x24 +extension RANDR >/dev/null 2>&1 & sleep 1
+    export DISPLAY=:98; xcompmgr >/dev/null 2>&1 & sleep 1
+    xrandr --setmonitor left 1280/338x800/211+0+0 none
+    xrandr --setmonitor "*right" 1280/338x800/211+1280+0 none
+    $RUN --page About > /tmp/gui.log 2>&1 & PID=$!
+    for i in $(seq 1 40); do
+        splash=$(xdotool search --class OpenShaoModKitSplash 2>/dev/null | head -1)
+        [ -n "$splash" ] && break; sleep 0.1
+    done
+    eval $(xdotool getwindowgeometry --shell $splash)
+    middle=$((X + WIDTH / 2))
+    [ "$middle" -ge 1280 ] && [ "$middle" -le 2560 ] && echo "$NAME: the splash screen is on the primary monitor (middle at $middle of 2560)" \
+        || echo "$NAME: THE SPLASH SCREEN IS NOT ON THE PRIMARY MONITOR (middle at $middle of 2560)"
+    stop
 fi
 '
 docker run --rm -e RUN="python3 -m modkit" -e NAME=source -e PYTHONPATH=/src -v "$PWD/src":/src:ro -v "$ISO":/iso/game.iso:ro -v "$PWD/tests/gui/out":/out modkit-guitest bash -c "$inside"

@@ -11,6 +11,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/Xfixes.h>
+#include <X11/extensions/Xrandr.h>
 #include <X11/extensions/shape.h>
 #include <dirent.h>
 #include <dlfcn.h>
@@ -319,10 +320,15 @@ public:
         attributes.background_pixel = 0;
         attributes.override_redirect = True;  // no frame, no taskbar entry, and the window manager leaves it where it is put
         attributes.event_mask = 0;
-        const int x = (DisplayWidth(display_, screen) - width_) / 2, y = (DisplayHeight(display_, screen) - height_) / 2;
+        // the middle of the primary monitor, not of the whole screen, which is the space between the monitors when there are several
+        int area_x = 0, area_y = 0, area_w = DisplayWidth(display_, screen), area_h = DisplayHeight(display_, screen);
+        PrimaryMonitor(root, &area_x, &area_y, &area_w, &area_h);
+        const int x = area_x + (area_w - width_) / 2, y = area_y + (area_h - height_) / 2;
         window_ = x_.XCreateWindow(display_, root, x, y, unsigned(width_), unsigned(height_), 0, 32, InputOutput, visual.visual,
                                    CWColormap | CWBorderPixel | CWBackPixel | CWOverrideRedirect | CWEventMask, &attributes);
         if (!window_) return false;
+        XClassHint hint = {const_cast<char*>("openshao-modkit-splash"), const_cast<char*>("OpenShaoModKitSplash")};
+        x_.XSetClassHint(display_, window_, &hint);
         PassClicksThrough();
         graphics_ = x_.XCreateGC(display_, window_, 0, nullptr);
         compose_.assign(size_t(kWidth * kCompose) * size_t(kHeight * kCompose) * 4, 0);
@@ -393,10 +399,13 @@ private:
         decltype(&::XPutImage) XPutImage = nullptr;
         decltype(&::XFlush) XFlush = nullptr;
         decltype(&::XResourceManagerString) XResourceManagerString = nullptr;
+        decltype(&::XSetClassHint) XSetClassHint = nullptr;
     } x_;
     decltype(&::XFixesCreateRegion) fixes_create_ = nullptr;
     decltype(&::XFixesSetWindowShapeRegion) fixes_shape_ = nullptr;
     decltype(&::XFixesDestroyRegion) fixes_destroy_ = nullptr;
+    decltype(&::XRRGetMonitors) randr_monitors_ = nullptr;
+    decltype(&::XRRFreeMonitors) randr_free_ = nullptr;
 
     bool LoadXlib() {
         void* lib = dlopen("libX11.so.6", RTLD_NOW | RTLD_GLOBAL);
@@ -405,14 +414,34 @@ private:
 #define LOAD(name) ok = ok && (x_.name = reinterpret_cast<decltype(x_.name)>(dlsym(lib, #name))) != nullptr
         LOAD(XOpenDisplay); LOAD(XCloseDisplay); LOAD(XInternAtom); LOAD(XGetSelectionOwner); LOAD(XMatchVisualInfo); LOAD(XCreateColormap);
         LOAD(XFreeColormap); LOAD(XCreateWindow); LOAD(XDestroyWindow); LOAD(XMapRaised); LOAD(XCreateGC); LOAD(XFreeGC); LOAD(XCreateImage);
-        LOAD(XPutImage); LOAD(XFlush); LOAD(XResourceManagerString);
+        LOAD(XPutImage); LOAD(XFlush); LOAD(XResourceManagerString); LOAD(XSetClassHint);
 #undef LOAD
         if (void* fixes = dlopen("libXfixes.so.3", RTLD_NOW)) {  // best effort: without it the splash takes the clicks it covers
             fixes_create_ = reinterpret_cast<decltype(fixes_create_)>(dlsym(fixes, "XFixesCreateRegion"));
             fixes_shape_ = reinterpret_cast<decltype(fixes_shape_)>(dlsym(fixes, "XFixesSetWindowShapeRegion"));
             fixes_destroy_ = reinterpret_cast<decltype(fixes_destroy_)>(dlsym(fixes, "XFixesDestroyRegion"));
         }
+        if (void* randr = dlopen("libXrandr.so.2", RTLD_NOW)) {  // best effort: without it the splash is centred on the whole screen
+            randr_monitors_ = reinterpret_cast<decltype(randr_monitors_)>(dlsym(randr, "XRRGetMonitors"));
+            randr_free_ = reinterpret_cast<decltype(randr_free_)>(dlsym(randr, "XRRFreeMonitors"));
+        }
         return ok;
+    }
+
+    // The primary monitor's rectangle (the first monitor when none is marked primary); the whole screen when RandR cannot tell.
+    void PrimaryMonitor(Window root, int* x, int* y, int* width, int* height) {
+        if (!randr_monitors_ || !randr_free_) return;
+        int count = 0;
+        XRRMonitorInfo* monitors = randr_monitors_(display_, root, True, &count);
+        if (!monitors) return;
+        int pick = -1;
+        for (int i = 0; i < count && pick < 0; ++i)
+            if (monitors[i].primary) pick = i;
+        if (pick < 0 && count > 0) pick = 0;
+        if (pick >= 0) {
+            *x = monitors[pick].x; *y = monitors[pick].y; *width = monitors[pick].width; *height = monitors[pick].height;
+        }
+        randr_free_(monitors);
     }
 
     // An empty input region: clicks go to the window below, as they do through the splash of the Windows launcher.

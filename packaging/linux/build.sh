@@ -8,7 +8,7 @@ set -e
 cd "$(dirname "$0")/../.."
 docker run --rm -e PYTHONDONTWRITEBYTECODE=1 -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -v "$PWD":/w -w /w quay.io/pypa/manylinux_2_28_x86_64 bash -c '
   set -e
-  dnf install -y -q python3.12 python3.12-pip python3.12-devel binutils libX11-devel libXfixes-devel > /dev/null
+  dnf install -y -q python3.12 python3.12-pip python3.12-devel binutils libX11-devel libXfixes-devel libXrandr-devel > /dev/null
   PY=/usr/bin/python3.12
   mkdir -p /tmp/bc && g++ -std=c++17 -O2 -shared -fPIC -I native/bc native/bc/bcenc.cpp native/bc/rgbcx.cpp -o /tmp/bc/libbc.so  # outside the repository
   $PY -m pip install -q pyinstaller unicorn numpy pillow imgui-bundle

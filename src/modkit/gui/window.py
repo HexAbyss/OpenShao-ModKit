@@ -79,16 +79,16 @@ def style(title):
 
 
 def center(hwnd):
-    """Puts the window in the middle of the work area of the screen the user is on (the one with the active window)"""
+    """Puts the window in the middle of the work area of the primary monitor, whatever the number of monitors"""
     from ctypes import wintypes
     user32 = ctypes.windll.user32
 
     class Info(ctypes.Structure):
         _fields_ = [('size', wintypes.DWORD), ('monitor', wintypes.RECT), ('work', wintypes.RECT), ('flags', wintypes.DWORD)]
 
-    user32.MonitorFromWindow.restype = wintypes.HANDLE
-    user32.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
-    monitor = user32.MonitorFromWindow(user32.GetForegroundWindow() or hwnd, 2)  # MONITOR_DEFAULTTONEAREST
+    user32.MonitorFromPoint.restype = wintypes.HANDLE
+    user32.MonitorFromPoint.argtypes = [wintypes.POINT, wintypes.DWORD]
+    monitor = user32.MonitorFromPoint(wintypes.POINT(0, 0), 1)  # MONITOR_DEFAULTTOPRIMARY: the primary monitor's origin is (0, 0)
     info = Info(ctypes.sizeof(Info))
     user32.GetMonitorInfoW.argtypes = [wintypes.HANDLE, ctypes.POINTER(Info)]
     if not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):

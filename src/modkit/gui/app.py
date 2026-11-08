@@ -462,6 +462,9 @@ def run(**options):
     params.app_window_params.window_title = TITLE
     params.app_window_params.window_geometry.size = (WIDTH, HEIGHT)
     params.app_window_params.window_geometry.size_auto = False
+    # always on the primary monitor (monitor 0 is the primary one), whatever the number of monitors or where the pointer is
+    params.app_window_params.window_geometry.position_mode = hello_imgui.WindowPositionMode.monitor_center
+    params.app_window_params.window_geometry.monitor_idx = 0
     params.imgui_window_params.show_menu_bar = False
     params.imgui_window_params.default_imgui_window_type = hello_imgui.DefaultImGuiWindowType.no_default_window
     params.fps_idling.enable_idling = False
