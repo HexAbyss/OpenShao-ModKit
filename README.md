@@ -26,15 +26,13 @@ The same operations are available from Python for scripts and batch tools: [docs
 
 ## Get it
 
-Download the ModKit for your system from the [releases](https://github.com/HexAbyss/OpenShao-ModKit/releases) page. It is one file that needs no Python
-and nothing else to install.
+Download the ModKit for your system from the [releases](https://github.com/HexAbyss/OpenShao-ModKit/releases) page. It needs no Python and nothing else to install.
+Each download holds the program, a `readme.txt` and a `licenses` folder.
 
-- **Windows:** run `OpenShao-ModKit-Windows-x64.exe`. The file is not code signed, so SmartScreen can stop it once: choose **More info**, then **Run anyway**
-  ([details](docs/TROUBLESHOOTING.md)).
-- **Linux:** download `OpenShao-ModKit-Linux-x64.tar.gz` (glibc 2.28 or later), extract it and run `OpenShao-ModKit-Linux-x64`. The window needs OpenGL. If your file
-  manager says it cannot open the file, allow executing it first: right-click, **Properties**, **Permissions**, **Allow executing file as program**
-  (or `chmod +x OpenShao-ModKit-Linux-x64`). On Ubuntu, do not run it from the Desktop folder: the Desktop icons do not start programs when they are
-  double-clicked, so extract it into another folder, such as Downloads or your Home folder. A ModKit command as the first argument runs in the terminal: `OpenShao-ModKit-Linux-x64 extract <game> <folder>`.
+- **Windows:** extract `OpenShao-ModKit-Windows-x64.zip` and run `OpenShao-ModKit.exe`. The file is not code signed, so SmartScreen can stop it once: choose
+  **More info**, then **Run anyway** ([details](docs/TROUBLESHOOTING.md)).
+- **Linux:** extract `OpenShao-ModKit-Linux-x64.tar.gz` (glibc 2.28 or later) and run `OpenShao-ModKit` from the folder it creates. The window needs OpenGL.
+  A ModKit command as the first argument runs in the terminal: `./OpenShao-ModKit extract <game> <folder>`.
 
 The first run unpacks the ModKit into your user data folder (`%LOCALAPPDATA%\OpenShao\ModKit` or `~/.local/share/OpenShao/ModKit`); the window opens in about a
 second after that. To build it yourself, or to run it from the source, see [docs/BUILDING.md](docs/BUILDING.md).

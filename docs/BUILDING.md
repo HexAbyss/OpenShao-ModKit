@@ -30,6 +30,11 @@ that comes with Windows 10 and later, into `%LOCALAPPDATA%\OpenShao\ModKit\<hash
 Both launchers carry the payload after the program, in the same layout: the payload, its SHA-256 (32 bytes), its size (8 bytes, little-endian) and the
 marker `MKPAYLD1` (`packaging/windows/embed_payload.py`). A build with no payload runs a `modkit` folder beside it.
 
+**The packages.** `packaging/make_release.py` packs the program with `packaging/release/readme.txt` and `packaging/release/licenses/` into what is published:
+`make_release.py linux dist/OpenShao-ModKit OpenShao-ModKit-Linux-x64.tar.gz` makes a tar.gz whose folder `OpenShao-ModKit/` holds the program (with its permission to run),
+the readme and the licenses; `make_release.py windows dist\OpenShao-ModKit.exe OpenShao-ModKit-Windows-x64.zip` makes a zip with the same three. A folder is the unit
+that people extract, so the program starts from a folder of its own on any desktop. Keep `licenses/THIRD_PARTY.txt` in step with the libraries the build carries.
+
 ## Layout
 
 ```
