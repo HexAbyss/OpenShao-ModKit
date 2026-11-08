@@ -1,12 +1,13 @@
 // OpenShao-ModKit.exe: opens the ModKit window without a console and shows a splash screen until the window is ready.
 //
-// It starts modkit.exe (beside it) with the "gui" command and no console, and draws a splash on a transparent layered window: the interface's
+// It carries modkit.exe inside itself (see Prepare), starts it with the "gui" command and no console, and draws a splash on a transparent layered window: the interface's
 // brush circle drawn in and then out again, the name, and "Starting" with three dots that appear and disappear in turn. modkit.exe tells it the
 // window is up by setting the named event whose name is in MODKIT_READY; the splash then fades out and this program ends, leaving the ModKit running.
 #define UNICODE
 #define _UNICODE
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <bcrypt.h>
 #include <objidl.h>
 #include <gdiplus.h>
 
@@ -230,13 +231,6 @@ private:
     Gdiplus::PrivateFontCollection regular_fonts_, semibold_fonts_;
 };
 
-std::wstring Directory() {
-    wchar_t path[MAX_PATH * 4];
-    DWORD n = GetModuleFileNameW(nullptr, path, DWORD(sizeof(path) / sizeof(path[0])));
-    std::wstring full(path, n);
-    return full.substr(0, full.find_last_of(L"\\/") + 1);
-}
-
 // The arguments given to this program, to pass on after "gui"
 std::wstring Arguments() {
     const wchar_t* line = GetCommandLineW();
@@ -248,43 +242,171 @@ std::wstring Arguments() {
     return line;
 }
 
+
+
+// The ModKit is in this file, after the program: [modkit.exe][SHA-256, 32 bytes][its size, 8 bytes][MKPAYLD1]. On the first run it is written to
+// %LOCALAPPDATA%\OpenShao\ModKit\<start of the hash>\modkit.exe and checked against the hash; later runs use that copy. A build with no payload
+// (a development build) uses a modkit.exe beside this file.
+constexpr size_t kTrailer = 48;
+
+std::wstring Hex(const uint8_t* bytes, size_t n) {
+    static const wchar_t digits[] = L"0123456789abcdef";
+    std::wstring s;
+    for (size_t i = 0; i < n; ++i) { s += digits[bytes[i] >> 4]; s += digits[bytes[i] & 15]; }
+    return s;
+}
+
+bool ReadAt(HANDLE file, uint64_t offset, void* buffer, DWORD size) {
+    LARGE_INTEGER at;
+    at.QuadPart = LONGLONG(offset);
+    DWORD got = 0;
+    return SetFilePointerEx(file, at, nullptr, FILE_BEGIN) && ReadFile(file, buffer, size, &got, nullptr) && got == size;
+}
+
+bool FileSize(const std::wstring& path, uint64_t* size) {
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data)) return false;
+    *size = (uint64_t(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+    return true;
+}
+
+bool MakeFolder(const std::wstring& path) { return CreateDirectoryW(path.c_str(), nullptr) || GetLastError() == ERROR_ALREADY_EXISTS; }
+
+struct Prepared {
+    std::wstring program, error;
+    volatile bool done = false;
+};
+
+// Copies the payload to `target` while hashing it; true when the hash is the one in the trailer.
+bool Extract(HANDLE self, uint64_t offset, uint64_t size, const uint8_t* expected, const std::wstring& target) {
+    HANDLE out = CreateFileW(target.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (out == INVALID_HANDLE_VALUE) return false;
+    BCRYPT_ALG_HANDLE algorithm = nullptr;
+    BCRYPT_HASH_HANDLE hash = nullptr;
+    bool ok = BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) == 0 && BCryptCreateHash(algorithm, &hash, nullptr, 0, nullptr, 0, 0) == 0;
+    std::vector<uint8_t> block(4 << 20);
+    for (uint64_t done = 0; ok && done < size;) {
+        const DWORD n = DWORD(size - done < block.size() ? size - done : block.size());
+        DWORD wrote = 0;
+        ok = ReadAt(self, offset + done, block.data(), n) && BCryptHashData(hash, block.data(), n, 0) == 0 && WriteFile(out, block.data(), n, &wrote, nullptr) && wrote == n;
+        done += n;
+    }
+    uint8_t digest[32] = {};
+    if (ok) ok = BCryptFinishHash(hash, digest, 32, 0) == 0 && std::memcmp(digest, expected, 32) == 0;
+    if (hash) BCryptDestroyHash(hash);
+    if (algorithm) BCryptCloseAlgorithmProvider(algorithm, 0);
+    CloseHandle(out);
+    if (!ok) DeleteFileW(target.c_str());
+    return ok;
+}
+
+DWORD WINAPI Prepare(LPVOID parameter) {
+    Prepared& result = *static_cast<Prepared*>(parameter);
+    wchar_t path[MAX_PATH * 4];
+    const DWORD length = GetModuleFileNameW(nullptr, path, DWORD(sizeof(path) / sizeof(path[0])));
+    const std::wstring self_path(path, length);
+    const std::wstring folder = self_path.substr(0, self_path.find_last_of(L"\\/") + 1);
+    HANDLE self = CreateFileW(self_path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    uint8_t trailer[kTrailer] = {};
+    LARGE_INTEGER total = {};
+    bool embedded = false;
+    if (self != INVALID_HANDLE_VALUE && GetFileSizeEx(self, &total) && uint64_t(total.QuadPart) > kTrailer &&
+        ReadAt(self, uint64_t(total.QuadPart) - kTrailer, trailer, kTrailer))
+        embedded = std::memcmp(trailer + 40, "MKPAYLD1", 8) == 0;
+    if (!embedded) {
+        if (self != INVALID_HANDLE_VALUE) CloseHandle(self);
+        result.program = folder + L"modkit.exe";
+        if (GetFileAttributesW(result.program.c_str()) == INVALID_FILE_ATTRIBUTES)
+            result.error = L"This copy of OpenShao-ModKit.exe has no ModKit inside and modkit.exe was not found beside it.";
+        result.done = true;
+        return 0;
+    }
+    uint64_t size = 0;
+    std::memcpy(&size, trailer + 32, 8);
+    if (size == 0 || size > uint64_t(total.QuadPart) - kTrailer) {
+        result.error = L"OpenShao-ModKit.exe is damaged. Download it again.";
+    } else {
+        wchar_t local[MAX_PATH];
+        const DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", local, MAX_PATH);
+        const std::wstring root = n && n < MAX_PATH ? std::wstring(local) : folder;
+        const std::wstring base = root + L"\\OpenShao", versions = base + L"\\ModKit";
+        const std::wstring current = versions + L"\\" + Hex(trailer, 8), program = current + L"\\modkit.exe";
+        uint64_t have = 0;
+        if (!(FileSize(program, &have) && have == size)) {
+            const std::wstring temporary = current + L"\\modkit." + std::to_wstring(GetCurrentProcessId()) + L".tmp";
+            if (!MakeFolder(base) || !MakeFolder(versions) || !MakeFolder(current))
+                result.error = L"The ModKit could not be unpacked: the folder " + current + L" could not be created.";
+            else if (!Extract(self, uint64_t(total.QuadPart) - kTrailer - size, size, trailer, temporary))
+                result.error = L"The ModKit could not be unpacked to " + current + L". There may be no space left, or OpenShao-ModKit.exe is damaged.";
+            else if (!MoveFileExW(temporary.c_str(), program.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+                if (!(FileSize(program, &have) && have == size)) result.error = L"The ModKit could not be unpacked to " + current + L".";  // another run may have won
+                DeleteFileW(temporary.c_str());
+            }
+        }
+        if (result.error.empty()) {
+            result.program = program;
+            WIN32_FIND_DATAW entry;  // older versions are removed (best effort: one that is running stays)
+            HANDLE find = FindFirstFileW((versions + L"\\*").c_str(), &entry);
+            if (find != INVALID_HANDLE_VALUE) {
+                do {
+                    const std::wstring name = entry.cFileName;
+                    if (name == L"." || name == L".." || !(entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || versions + L"\\" + name == current) continue;
+                    DeleteFileW((versions + L"\\" + name + L"\\modkit.exe").c_str());
+                    RemoveDirectoryW((versions + L"\\" + name).c_str());
+                } while (FindNextFileW(find, &entry));
+                FindClose(find);
+            }
+        }
+    }
+    CloseHandle(self);
+    result.done = true;
+    return 0;
+}
 }  // namespace
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     SetProcessDPIAware();
-    const std::wstring program = Directory() + L"modkit.exe";
-    if (GetFileAttributesW(program.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        MessageBoxW(nullptr, L"modkit.exe was not found beside OpenShao-ModKit.exe. Keep the two files in the same folder.", L"OpenShao ModKit",
-                    MB_OK | MB_ICONERROR);
-        return 1;
-    }
     const std::wstring name = L"OpenShaoModKitReady-" + std::to_wstring(GetCurrentProcessId());
     HANDLE ready = CreateEventW(nullptr, TRUE, FALSE, name.c_str());
     SetEnvironmentVariableW(L"MODKIT_READY", name.c_str());
-
-    std::wstring command = L"\"" + program + L"\" gui " + Arguments();
-    STARTUPINFOW startup = {sizeof(startup)};
-    PROCESS_INFORMATION child = {};
-    if (!CreateProcessW(program.c_str(), &command[0], nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, Directory().c_str(), &startup, &child)) {
-        MessageBoxW(nullptr, L"modkit.exe could not be started.", L"OpenShao ModKit", MB_OK | MB_ICONERROR);
-        return 1;
-    }
-
     AllowSetForegroundWindow(ASFW_ANY);  // this program was started by the user, so it may let the ModKit window come to the front
+
+    Prepared prepared;
+    HANDLE worker = CreateThread(nullptr, 0, Prepare, &prepared, 0, nullptr);
 
     ULONG_PTR token = 0;
     Gdiplus::GdiplusStartupInput input;
     Gdiplus::GdiplusStartup(&token, &input, nullptr);
     int result = 0;
+    PROCESS_INFORMATION child = {};
     {
         Splash splash;
         const bool shown = splash.Create();
         double fade_started = -1;
+        bool started = false;
         for (;;) {
             MSG message;
             while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) DispatchMessageW(&message);
             const double seconds = splash.Elapsed();
-            if (fade_started < 0) {
+            if (!started && prepared.done) {
+                if (!prepared.error.empty()) {
+                    splash.Close();
+                    MessageBoxW(nullptr, prepared.error.c_str(), L"OpenShao ModKit", MB_OK | MB_ICONERROR);
+                    result = 1;
+                    break;
+                }
+                std::wstring command = L"\"" + prepared.program + L"\" gui " + Arguments();
+                STARTUPINFOW startup = {sizeof(startup)};
+                const std::wstring folder = prepared.program.substr(0, prepared.program.find_last_of(L"\\/") + 1);
+                if (!CreateProcessW(prepared.program.c_str(), &command[0], nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, folder.c_str(), &startup, &child)) {
+                    splash.Close();
+                    MessageBoxW(nullptr, L"The ModKit could not be started.", L"OpenShao ModKit", MB_OK | MB_ICONERROR);
+                    result = 1;
+                    break;
+                }
+                started = true;
+            }
+            if (started && fade_started < 0) {
                 if (WaitForSingleObject(ready, 0) == WAIT_OBJECT_0 || seconds > kGiveUp) {
                     fade_started = seconds;
                 } else if (WaitForSingleObject(child.hProcess, 0) == WAIT_OBJECT_0) {
@@ -309,7 +431,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         splash.Close();
     }
     Gdiplus::GdiplusShutdown(token);
-    CloseHandle(child.hThread);
-    CloseHandle(child.hProcess);
+    WaitForSingleObject(worker, 5000);
+    CloseHandle(worker);
+    if (child.hProcess) {
+        CloseHandle(child.hThread);
+        CloseHandle(child.hProcess);
+    }
     return result;
 }
