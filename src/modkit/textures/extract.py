@@ -16,6 +16,7 @@ import numpy as np
 from PIL import Image
 
 from ..xbox.archive import VOLUME, Archive, entry as archive_entry
+from .. import fsutil
 from ..xbox.ewdf import Decompressor, unpack_entry
 from ..xbox.source import GameSource
 from ..xbox.xpr import parse_xpr, to_rgba, xhash
@@ -44,6 +45,16 @@ def _init(path, out_dir):
     _state = dict(source=source, archive=Archive(source.volumes()), decompressor=Decompressor(source.default_xbe()), out=out_dir, seen=set())
 
 
+def _release():
+    """Lets go of what this process keeps of the game, so its files can be moved or deleted"""
+    global _state
+    state, _state = _state, None
+    if state:
+        source = state['source']
+        state.clear()
+        source.close()
+
+
 def _save(out_dir, name, image):
     """Writes a PNG, once; two processes that find the same texture write the same bytes, so a race is harmless"""
     target = os.path.join(out_dir, name)
@@ -51,7 +62,7 @@ def _save(out_dir, name, image):
         return
     temporary = '%s.%d.part' % (target, os.getpid())
     Image.fromarray(image, 'RGBA').save(temporary, format='PNG')
-    os.replace(temporary, target)
+    fsutil.replace(temporary, target)
 
 
 def _visit(buffer, path, found, stats):
@@ -136,7 +147,9 @@ def extract(source_path, out_dir, workers=None, limit=None, progress=None, cance
         missing = source.check()
         if missing:
             raise ValueError('the game is incomplete, it lacks: ' + ', '.join(missing))
-        total = len(Archive(source.volumes()).entries)
+        archive = Archive(source.volumes())
+        total = len(archive.entries)
+        del archive
     finally:
         source.close()
     if limit is not None:
@@ -173,8 +186,7 @@ def extract(source_path, out_dir, workers=None, limit=None, progress=None, cance
                     break
                 take(*_work(chunk))
         finally:
-            if _state:
-                _state['source'].close()
+            _release()
     else:
         context = multiprocessing.get_context('spawn')
         pool = context.Pool(workers, initializer=_init, initargs=(os.fspath(source_path), out_dir))
@@ -199,6 +211,6 @@ def extract(source_path, out_dir, workers=None, limit=None, progress=None, cance
         temporary = os.path.join(out_dir, MANIFEST + '.part')
         with open(temporary, 'w') as f:
             json.dump(manifest, f)
-        os.replace(temporary, os.path.join(out_dir, MANIFEST))
+        fsutil.replace(temporary, os.path.join(out_dir, MANIFEST))
     result.seconds = time.time() - started
     return result

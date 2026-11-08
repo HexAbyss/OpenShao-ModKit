@@ -1,0 +1,2 @@
+FROM debian:bookworm-slim
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq xvfb imagemagick x11-utils libgl1 libglx-mesa0 libgl1-mesa-dri libegl1 libxkbcommon0 libxrandr2 libxinerama1 libxcursor1 libxi6 xdotool xcompmgr bc x11-xserver-utils > /dev/null 2>&1

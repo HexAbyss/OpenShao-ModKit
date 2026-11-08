@@ -1,4 +1,4 @@
-"""The OSTP texture pack file (version 1.1), as docs/FORMATO_PACK.md specifies it.
+"""The OSTP texture pack file, version 1.1 (specified in TEXTURE_PACK_FORMAT.md in the OpenShao repository).
 
 The layout is: a 128 byte header, the metadata (JSON), an optional logo, the index (40 bytes a texture, sorted by hash) and the data (the BC
 blocks of every texture, largest level first, each texture starting on a multiple of 16). The size of every texture's blocks follows from its
@@ -11,6 +11,8 @@ import struct
 from dataclasses import dataclass
 
 from PIL import Image
+
+from .. import fsutil
 
 MAGIC = b'OSTPACK\0'
 HEADER = 128
@@ -76,9 +78,43 @@ def check_spec(spec):
     return None
 
 
+LINE_TEXT = ('description', 'credits')                      # may have line breaks
+ONE_LINE_TEXT = ('name', 'summary', 'website', 'license')   # one line each
+_CONTROL = re.compile(r'[\x00-\x1f\x7f]')
+
+
+def clean_info(info):
+    """A copy of the information the game can read: it refuses control characters, so a tab or a line break in a one-line text (and a tab or a carriage return
+    anywhere) becomes a space, and the line breaks of a description and of the credits become line feeds"""
+    info = dict(info)
+    for key in LINE_TEXT:
+        if isinstance(info.get(key), str):
+            text = info[key].replace('\r\n', '\n').replace('\r', '\n')
+            info[key] = re.sub(r'[\x00-\x09\x0b-\x1f\x7f]', ' ', text).strip()
+    for key in ONE_LINE_TEXT:
+        if isinstance(info.get(key), str):
+            info[key] = _CONTROL.sub(' ', info[key]).strip()
+    if isinstance(info.get('authors'), list):
+        info['authors'] = [_CONTROL.sub(' ', a).strip() if isinstance(a, str) else a for a in info['authors']]
+    return info
+
+
+def control_problems(info):
+    """The texts that hold control characters the game refuses (a line feed is allowed in the description and in the credits)"""
+    problems = []
+    for key in ONE_LINE_TEXT + LINE_TEXT:
+        text = info.get(key)
+        if isinstance(text, str) and re.search(r'[\x00-\x09\x0b-\x1f\x7f]' if key in LINE_TEXT else r'[\x00-\x1f\x7f]', text):
+            problems.append('%s has a control character (a tab, or a line break where only one line is allowed)' % key)
+    if any(isinstance(a, str) and _CONTROL.search(a) for a in info.get('authors', []) if isinstance(info.get('authors'), list)):
+        problems.append('an author has a control character')
+    return problems
+
+
 def validate_info(info):
     """The problems of the pack's information, in words; an empty list when it is fine"""
     problems = ['the information lacks: ' + k for k in REQUIRED if not info.get(k)]
+    problems += control_problems(info)
     if info.get('id') and not ID.match(str(info['id'])):
         problems.append('id must be letters, digits, - or _ (1 to 80)')
     if info.get('version') and not VERSION.match(str(info['version'])):
@@ -189,7 +225,7 @@ def write_pack(path, info, specs, blocks, logo=None, progress=None):
             if written != len(specs):
                 raise ValueError('only %d of %d textures were given' % (written, len(specs)))
             out.write(b'\0' * (plan['file_size'] - out.tell()))
-        os.replace(temporary, path)
+        fsutil.replace(temporary, path)
     except BaseException:
         try:
             os.remove(temporary)

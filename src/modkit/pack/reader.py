@@ -1,6 +1,7 @@
-"""Checks a texture pack file against docs/FORMATO_PACK.md section 8, in the order the game's reader does it, and reports every problem it finds.
-The game's own reader (src/texture_pack_file.cpp) is the one that decides what the game accepts; this one lets the tool say, before the pack
-is given to anyone, that the file it made is sound."""
+"""Checks a texture pack file against the validation rules of the format (TEXTURE_PACK_FORMAT.md in the OpenShao repository, section 8), in the
+order the game's reader applies them, and reports every problem it finds.
+The reader in the game (src/texture_pack_file.cpp) is authoritative for what the game accepts; this one lets the tool confirm, before a pack
+is distributed, that the file it wrote is sound."""
 import hashlib
 import json
 import os
@@ -8,7 +9,7 @@ import re
 import struct
 from dataclasses import dataclass, field
 
-from .ostp import BC1, BC3, ENTRY, HEADER, ID, MAGIC, MAX_LEVELS, MAX_LOGO, MAX_SIDE, REQUIRED, VERSION, level_size
+from .ostp import BC1, BC3, ENTRY, HEADER, ID, MAGIC, MAX_LEVELS, MAX_LOGO, MAX_SIDE, REQUIRED, VERSION, control_problems, level_size
 
 
 @dataclass
@@ -95,6 +96,8 @@ def verify(path):
             problem('the id is not letters, digits, - or _')
         if info.get('version') and not VERSION.match(str(info['version'])):
             problem('the version is not three numbers')
+        for text in control_problems(info):
+            problem('the metadata: ' + text)
         if info.get('texture_count') != count:
             problem('the metadata says %s textures, the header %d' % (info.get('texture_count'), count))
         for key in ('max_scale', 'texture_count'):
@@ -147,3 +150,24 @@ def verify(path):
     result.textures = count
     result.ok = not result.problems
     return result
+
+
+def entries(path):
+    """The textures a pack holds, as a list of dicts (hash, width, height, original_width, original_height, levels, format, alpha, size).
+    The file is not checked here: use verify() for that. Raises ValueError for a file that is not a pack."""
+    with open(path, 'rb') as f:
+        head = f.read(HEADER)
+        if len(head) < HEADER or head[:8] != MAGIC:
+            raise ValueError('%s is not a texture pack' % path)
+        index_offset, index_size = struct.unpack_from('<QQ', head, 56)
+        count = struct.unpack_from('<I', head, 88)[0]
+        if index_size != count * ENTRY:
+            raise ValueError('the index of %s is damaged' % path)
+        f.seek(index_offset)
+        index = f.read(index_size)
+    out = []
+    for i in range(count):
+        h, w, hh, ow, oh, levels, fmt, flags, _, _, _, size = struct.unpack_from('<QHHHHBBBBIQQ', index, i * ENTRY)
+        out.append(dict(hash=h, width=w, height=hh, original_width=ow, original_height=oh, levels=levels, format='BC1' if fmt == BC1 else 'BC3',
+                        alpha=bool(flags & 1), size=size))
+    return out

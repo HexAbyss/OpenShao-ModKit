@@ -1,4 +1,5 @@
 """Where the game's files come from: a disc image (.iso) or a folder that holds them (default.xbe and the GAMEDATA volumes)."""
+import gc
 import mmap
 import os
 
@@ -19,6 +20,8 @@ class GameSource:
         self.path = os.fspath(path)
         self._files = []
         self._maps = {}
+        self._mmaps = []
+        self._image = None
         if os.path.isdir(self.path):
             self.kind = 'folder'
             self._iso = None
@@ -27,6 +30,7 @@ class GameSource:
             handle = open(self.path, 'rb')
             self._files.append(handle)
             self._image = mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ)
+            self._mmaps.append(self._image)
             try:
                 self._iso = XISO(self._image)
             except XisoError as error:
@@ -52,7 +56,9 @@ class GameSource:
                 if os.fstat(handle.fileno()).st_size == 0:
                     view = memoryview(b'')
                 else:
-                    view = memoryview(mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ))
+                    mapping = mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ)
+                    self._mmaps.append(mapping)
+                    view = memoryview(mapping)
                 self._maps[name] = view
                 return view
         raise SourceError('the folder has no %s' % name)
@@ -75,11 +81,32 @@ class GameSource:
         return missing
 
     def close(self):
-        # views keep a mapping alive; dropping them lets the maps close
+        # Windows cannot delete or move a file while any part of it is mapped, so the maps are closed here and not left to the
+        # garbage collector. A map cannot close while a view of it lives: the views this object holds are dropped first, and a view
+        # a caller still holds keeps its map (and so its file) until the caller lets it go.
         self._maps.clear()
+        self._iso = None
+        self._image = None
+        gc.collect()
+        for mapping in self._mmaps:
+            try:
+                mapping.close()
+            except (BufferError, ValueError):
+                pass
+        self._mmaps = []
         for handle in self._files:
             try:
                 handle.close()
             except Exception:
                 pass
         self._files = []
+
+
+def check_game(path):
+    """What the game at `path` (an ISO or a folder) lacks for an extraction, as a list of file names; empty when it is complete.
+    Raises SourceError (a ValueError) when the path is not a usable game location at all."""
+    source = GameSource(path)
+    try:
+        return source.check()
+    finally:
+        source.close()

@@ -1,6 +1,6 @@
 """Compiles a folder of texture pictures into a texture pack (.ostp).
 
-The folder is the one the extraction wrote (docs/MODO_DESENVOLVEDOR.md): PNG files named <hash>_<format>_<width>x<height>.png and a manifest.json
+The folder is the one the extraction wrote: PNG files named <hash>_<format>_<width>x<height>.png and a manifest.json
 with the signature of each picture's pixels. Only the pictures whose pixels differ from their signature go into the pack, the same rule the
 game's developer mode uses. Each is stored with all its mip levels as BC1 (no transparency) or BC3 (transparency), encoded with rgbcx at
 its highest level; the work is spread over several processes.
@@ -18,6 +18,7 @@ import numpy as np
 from PIL import Image
 
 from ..pack import ostp
+from .. import fsutil
 from ..pack.reader import verify
 from . import bc
 from .extract import default_workers
@@ -180,13 +181,26 @@ def _encode(job):
     return b''.join(out)
 
 
+def read_preload(folder):
+    """The hashes in preload.txt (one a line, `#` starts a comment), as lower-case text; empty when there is no file"""
+    preload = []
+    path = os.path.join(folder, 'preload.txt')
+    if os.path.isfile(path):
+        with open(path, encoding='utf-8-sig') as f:  # a BOM from Notepad is not part of the text
+            for line in f:
+                line = line.split('#')[0].strip()
+                if line:
+                    preload.append(line.lower())
+    return preload
+
+
 def load_project(folder):
     """(information, logo picture or None, preload hashes, warnings) from pack.json, logo.png and preload.txt in the folder"""
     path = os.path.join(folder, 'pack.json')
     if not os.path.isfile(path):
         raise ValueError('there is no pack.json in the folder; run "init" to write one and fill it in')
     try:
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding='utf-8-sig') as f:  # a BOM from Notepad is not part of the text
             info = json.load(f)
     except ValueError as error:
         raise ValueError('pack.json is not valid JSON: %s' % error)
@@ -204,15 +218,7 @@ def load_project(folder):
         elif logo_name != TEMPLATE['logo']:
             raise ValueError('the logo %s named in pack.json is not in the folder' % logo_name)
     info = {k: v for k, v in info.items() if v not in ('', None)}
-    preload = []
-    preload_path = os.path.join(folder, 'preload.txt')
-    if os.path.isfile(preload_path):
-        with open(preload_path, encoding='utf-8') as f:
-            for line in f:
-                line = line.split('#')[0].strip()
-                if line:
-                    preload.append(line.lower())
-    return info, logo, preload, warnings
+    return info, logo, read_preload(folder), warnings
 
 
 def init_project(folder):
@@ -225,14 +231,36 @@ def init_project(folder):
     return path
 
 
-def compile_folder(folder, out_path, workers=None, encoder=None, progress=None, cancel=None, require_manifest=True):
+def compile_folder(folder, out_path, workers=None, encoder=None, progress=None, cancel=None, require_manifest=True,
+                   info=None, logo=None, preload=None):
     """Builds `out_path` from the edited pictures of `folder`. `progress(done, total)` is called per texture. Raises ValueError, with
-    the reasons in words, when the folder cannot make a pack."""
+    the reasons in words, when the folder cannot make a pack.
+
+    By default the pack's information, logo and preload list come from pack.json, logo.png and preload.txt in the folder. A program can give
+    them instead: `info` (a dict with the same keys as pack.json, which then needs not exist), `logo` (a path or a PIL image) and `preload`
+    (hashes, as integers or 16 hexadecimal digits)."""
     started = time.time()
-    info, logo, preload, warnings = load_project(folder)
+    warnings = []
+    if info is None:
+        info, project_logo, project_preload, warnings = load_project(folder)
+        logo = project_logo if logo is None else logo
+        preload = project_preload if preload is None else preload
+    else:
+        info = {k: v for k, v in dict(info).items() if v not in ('', None)}
+        info.pop('logo', None)
+    if isinstance(logo, (str, os.PathLike)):
+        try:
+            logo = Image.open(logo)
+            logo.load()
+        except Exception as error:
+            warnings.append('the logo cannot be read (%s); the pack has none' % str(error)[:80])
+            logo = None
+    preload = [p if isinstance(p, str) else '%016x' % p for p in (preload or [])]
+    preload = [p.lower() for p in preload]
+    info = ostp.clean_info(info)
     problems = ostp.validate_info(info)
     if problems:
-        raise ValueError('pack.json: ' + '; '.join(problems))
+        raise ValueError('pack information: ' + '; '.join(problems))
     scan = scan_folder(folder, workers)
     if scan.manifest_problem and require_manifest:
         raise ValueError('%s, so there is no way to tell which pictures were edited and the whole game would go in the pack. Extract the game '
@@ -290,7 +318,7 @@ def compile_folder(folder, out_path, workers=None, encoder=None, progress=None, 
             raise ValueError('the pack does not verify, so it was not written: ' + '; '.join(result.verification.problems[:5]))
         result.textures = len(specs)
         result.size = os.path.getsize(candidate)
-        os.replace(candidate, out_path)
+        fsutil.replace(candidate, out_path)
     except _Cancelled:
         result.cancelled = True
     finally:

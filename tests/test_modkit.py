@@ -523,6 +523,43 @@ class CompileTest(unittest.TestCase):
             for word in ('id must be', 'version must be', 'authors must be'):
                 self.assertIn(word, str(caught.exception))
 
+    def test_control_characters_the_game_refuses_are_cleaned_or_reported(self):
+        info = dict(id='i', name='a\tb\nc', version='1.0.0', authors=['x\ny'], summary='one\ntwo', min_recomp='0.4.1',
+                    description='p1\r\n\r\np2\tq', credits='a\rb', website='w\n')
+        self.assertTrue(ostp.control_problems(info))                    # the game would refuse this pack, so the check says so
+        cleaned = ostp.clean_info(info)
+        self.assertEqual(cleaned['name'], 'a b c')
+        self.assertEqual(cleaned['authors'], ['x y'])
+        self.assertEqual(cleaned['description'], 'p1\n\np2 q')         # paragraphs stay in the description and in the credits
+        self.assertEqual(cleaned['credits'], 'a\nb')
+        self.assertEqual(cleaned['website'], 'w')
+        self.assertEqual(ostp.control_problems(cleaned), [])
+        self.assertEqual(ostp.validate_info(cleaned), [])
+        self.assertTrue(any('name' in p for p in ostp.validate_info(dict(cleaned, name='a\nb'))))
+        self.assertTrue(any('description' in p for p in ostp.validate_info(dict(cleaned, description='a\tb'))))
+
+    def test_a_rename_refused_for_a_moment_is_tried_again(self):
+        from modkit import fsutil
+        real = os.replace
+        calls = []
+
+        def refuse_twice(source, target):
+            calls.append(1)
+            if len(calls) <= 2:
+                raise PermissionError(5, 'Access is denied')
+            real(source, target)
+
+        with tempfile.TemporaryDirectory() as t:
+            a, b = Path(t) / 'a', Path(t) / 'b'
+            a.write_text('x')
+            with mock.patch('os.replace', refuse_twice), mock.patch('time.sleep'):
+                fsutil.replace(a, b)
+            self.assertEqual((len(calls), b.read_text(), a.exists()), (3, 'x', False))
+            a.write_text('y')
+            with mock.patch('os.replace', side_effect=PermissionError(5, 'Access is denied')), mock.patch('time.sleep'):
+                with self.assertRaises(PermissionError):
+                    fsutil.replace(a, b, attempts=3)
+
     def test_init_writes_a_project_that_can_be_filled_in_once(self):
         with tempfile.TemporaryDirectory() as t:
             self.assertTrue(compilation.init_project(t).endswith('pack.json'))
@@ -663,8 +700,8 @@ class GameReaderTest(unittest.TestCase):
                 self.assertEqual(read[p.hash], (len(blocks), h), '%016x' % p.hash)
 
 
-class ReviewFixesTest(unittest.TestCase):
-    """Each problem the review of the tool found, kept from coming back"""
+class RobustnessTest(unittest.TestCase):
+    """Error handling of extraction and compilation: unusable input is refused with a reason, and a failed or cancelled build leaves no file"""
     def build(self, t, **kwargs):
         folder = texture_folder(Path(t) / 'textures', **kwargs)
         write_project(folder)
@@ -816,6 +853,155 @@ class DecompressorTest(unittest.TestCase):
             result, why = decompressor.run(b'x', 10)
         self.assertIsNone(result)
         self.assertIn('did not return', why)
+
+
+class ApiTest(unittest.TestCase):
+    """The interface scripts use (modkit.TextureFolder and the functions at the top of the package)"""
+    def folder(self, t, **kwargs):
+        return texture_folder(Path(t) / 'textures', **kwargs)
+
+    def test_the_public_names_load_when_used(self):
+        import modkit
+        for name in modkit.__all__:
+            self.assertTrue(hasattr(modkit, name), name)
+        with self.assertRaises(AttributeError):
+            modkit.nothing_like_this
+
+    def test_a_folder_lists_finds_and_reads_its_textures(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            folder = modkit.TextureFolder(self.folder(t, edited=()))
+            self.assertEqual((len(folder), folder.has_manifest), (4, True))
+            self.assertEqual([x.hash for x in folder], [0x1000, 0x1001, 0x1002, 0x1003])
+            texture = folder.get('%016x' % 0x1001)
+            self.assertEqual((texture.format, texture.width, texture.height, texture.key), ('DXT5', 8, 8, '0000000000001001'))
+            self.assertIs(folder.get(0x1001), texture)
+            self.assertIn(0x1002, folder)
+            self.assertNotIn(0x9999, folder)
+            with self.assertRaises(KeyError):
+                folder.get(0x9999)
+            self.assertEqual(len(folder.find(format='DXT5', max_width=8)), 4)
+            self.assertEqual(folder.find(format='A8R8G8B8'), [])
+            self.assertEqual([x.hash for x in folder.find(where=lambda x: x.hash > 0x1001)], [0x1002, 0x1003])
+            self.assertEqual(folder.array(texture).shape, (8, 8, 4))
+            self.assertEqual(folder.image(texture).mode, 'RGBA')
+
+    def test_saving_a_picture_is_what_makes_it_edited(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            folder = modkit.TextureFolder(self.folder(t, edited=()))
+            texture = folder.get(0x1002)
+            self.assertFalse(folder.is_edited(texture))
+            pixels = folder.array(texture).copy()
+            pixels[0, 0, 0] ^= 1                                  # one bit of one pixel
+            folder.save(texture, pixels)
+            self.assertTrue(folder.is_edited(texture))
+            self.assertEqual([x.hash for x in folder.edited(workers=1)], [0x1002])
+            folder.save(0x1003, folder.image(0x1003).resize((16, 16)))   # a PIL image, twice the size
+            self.assertEqual([x.hash for x in folder.edited(workers=1)], [0x1002, 0x1003])
+            self.assertEqual([f for f in os.listdir(folder.path) if f.endswith('.part')], [])
+
+    def test_a_folder_without_a_manifest_still_lists_its_pictures(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            path = self.folder(t, edited=())
+            (path / 'manifest.json').unlink()
+            folder = modkit.TextureFolder(path)
+            self.assertEqual((len(folder), folder.has_manifest), (4, False))
+            self.assertTrue(folder.is_edited(0x1000), 'no signature: edited')
+            with self.assertRaises(ValueError):
+                modkit.TextureFolder(Path(t) / 'missing')
+
+    def test_a_script_gives_the_pack_information_instead_of_a_file(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            folder = modkit.TextureFolder(self.folder(t, edited=(0, 1)))
+            logo = Path(t) / 'mark.png'
+            Image.fromarray(np.full((8, 8, 4), 200, np.uint8), 'RGBA').save(logo)
+            info = dict(id='FromScript', name='From script', version='1.0.0', authors=['A'], summary='s', min_recomp='0.4.1', website='')
+            out = Path(t) / 'p.ostp'
+            result = folder.compile(out, info=info, logo=logo, preload=[0x1001, '%016X' % 0x1000, 0x7777], workers=1, encoder='rgbcx:0')
+            self.assertTrue(result.verification.ok, result.verification.problems)
+            self.assertEqual(result.verification.logo, (8, 8))
+            self.assertEqual(result.verification.info['id'], 'FromScript')
+            self.assertEqual(result.verification.info['preload'], ['%016x' % 0x1001, '%016x' % 0x1000])
+            self.assertNotIn('website', result.verification.info, 'an empty field is left out')
+            with self.assertRaisesRegex(ValueError, 'pack information'):
+                folder.compile(Path(t) / 'q.ostp', info=dict(info, id='bad id!'), workers=1)
+            self.assertFalse((Path(t) / 'q.ostp').exists())
+
+    def test_pack_entries_lists_what_a_pack_holds(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            path = self.folder(t, edited=(0, 1))
+            write_project(path)
+            out = Path(t) / 'p.ostp'
+            modkit.compile_folder(path, out, workers=1, encoder='rgbcx:0')
+            entries = modkit.pack_entries(out)
+            self.assertEqual([e['hash'] for e in entries], [0x1000, 0x1001])
+            first, second = entries
+            self.assertEqual((first['width'], first['original_width'], first['levels'], first['format'], first['alpha']), (16, 8, 5, 'BC1', False))
+            self.assertEqual((second['format'], second['alpha']), ('BC3', True))
+            self.assertTrue(modkit.verify(out).ok)
+            (Path(t) / 'junk').write_bytes(b'nothing')
+            with self.assertRaises(ValueError):
+                modkit.pack_entries(Path(t) / 'junk')
+
+    def test_check_game_names_what_is_missing(self):
+        import modkit
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(modkit.check_game(game_folder(Path(t) / 'game')), [])
+            (Path(t) / 'game' / 'default.xbe').unlink()
+            self.assertEqual(modkit.check_game(Path(t) / 'game'), ['default.xbe'])
+            with self.assertRaises(ValueError):
+                modkit.check_game(Path(t) / 'nowhere')
+
+
+class TaskTest(unittest.TestCase):
+    """The thread that runs a long job for the interface"""
+    def wait(self, task):
+        import time
+        for _ in range(500):
+            if task.finished:
+                return
+            time.sleep(0.01)
+        self.fail('the task did not finish')
+
+    def test_progress_result_and_timing(self):
+        from modkit.gui.tasks import Task, clock
+        def job(progress, cancel):
+            progress(1, 4, 'x')
+            progress(2, 4, 'y')
+            return 'result'
+        task = Task('job', job)
+        self.wait(task)
+        self.assertEqual((task.result, task.error, task.done, task.total, task.extra), ('result', '', 2, 4, 'y'))
+        self.assertEqual(task.fraction, 0.5)
+        self.assertEqual(task.eta, 0.0, 'nothing is left to wait for once it has finished')
+        self.assertEqual((clock(65), clock(3725)), ('1:05', '1:02:05'))
+
+    def test_cancelling_reaches_the_job(self):
+        from modkit.gui.tasks import Task
+        def job(progress, cancel):
+            while not cancel():
+                pass
+            return 'stopped'
+        task = Task('job', job)
+        task.cancel()
+        self.wait(task)
+        self.assertEqual(task.result, 'stopped')
+
+    def test_errors_the_user_can_fix_are_words_and_a_bug_is_named(self):
+        from modkit.gui.tasks import Task
+        def fixable(progress, cancel):
+            raise ValueError('the game is incomplete')
+        def bug(progress, cancel):
+            raise KeyError('oops')
+        a, b = Task('a', fixable), Task('b', bug)
+        self.wait(a)
+        self.wait(b)
+        self.assertEqual(a.error, 'the game is incomplete')
+        self.assertIn('unexpected error (KeyError)', b.error)
 
 
 @unittest.skipUnless(os.environ.get('OPENSHAO_TEST_ISO'), 'set OPENSHAO_TEST_ISO to the game image to check against the real game')
