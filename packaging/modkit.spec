@@ -1,4 +1,4 @@
-# PyInstaller spec of the ModKit executable. Built by packaging/linux/build.sh, which sets BC_LIB and UNICORN_LIB.
+# PyInstaller spec of the ModKit executable. Built by packaging/linux/build.sh and packaging\windows\build.bat, which set BC_LIB and UNICORN_LIB.
 import os
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules

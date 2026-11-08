@@ -1,4 +1,4 @@
-"""Entry point of the ModKit executable (PyInstaller builds it from this file; see packaging/linux/build.sh).
+"""Entry point of the ModKit executable (PyInstaller builds it from this file; see packaging/linux/build.sh and packaging/windows/build.bat).
 
 With a command (extract, compile, ...) it runs the ModKit; with none it opens the graphical interface."""
 import multiprocessing

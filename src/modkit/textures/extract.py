@@ -44,6 +44,16 @@ def _init(path, out_dir):
     _state = dict(source=source, archive=Archive(source.volumes()), decompressor=Decompressor(source.default_xbe()), out=out_dir, seen=set())
 
 
+def _release():
+    """Lets go of what this process keeps of the game, so its files can be moved or deleted"""
+    global _state
+    state, _state = _state, None
+    if state:
+        source = state['source']
+        state.clear()
+        source.close()
+
+
 def _save(out_dir, name, image):
     """Writes a PNG, once; two processes that find the same texture write the same bytes, so a race is harmless"""
     target = os.path.join(out_dir, name)
@@ -136,7 +146,9 @@ def extract(source_path, out_dir, workers=None, limit=None, progress=None, cance
         missing = source.check()
         if missing:
             raise ValueError('the game is incomplete, it lacks: ' + ', '.join(missing))
-        total = len(Archive(source.volumes()).entries)
+        archive = Archive(source.volumes())
+        total = len(archive.entries)
+        del archive
     finally:
         source.close()
     if limit is not None:
@@ -173,8 +185,7 @@ def extract(source_path, out_dir, workers=None, limit=None, progress=None, cance
                     break
                 take(*_work(chunk))
         finally:
-            if _state:
-                _state['source'].close()
+            _release()
     else:
         context = multiprocessing.get_context('spawn')
         pool = context.Pool(workers, initializer=_init, initargs=(os.fspath(source_path), out_dir))
