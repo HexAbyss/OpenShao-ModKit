@@ -200,7 +200,15 @@ and when the budget is full the pictures not drawn for the longest time go first
 out is read again when the game draws it. You can make the pack as large as you like, but a very large pack on a card with little memory will read
 pictures again often. Good habits:
 
-- Prefer **2x for most textures and 4x only where the player looks**, such as faces and hands.
+**Up to 8K, and who can use it.** The format, the game and the ModKit accept pictures up to **8192 pixels on a side** (8K). Since the game's own
+textures are at most 1,024 pixels, that is 8x on the largest ones. The memory grows with the pixels: an 8192 x 8192 texture takes about **85 MB** of video
+memory as BC3 (64 MB for the top level, a third more for the smaller ones), and every texture of the game at 8x would be around 16 GB. Only graphics cards with a lot
+of memory can show many 8K textures at once. A card of 4 GB, such as a GTX 1650, can show a few and no more: the rest of the textures wait to be read again
+as the camera moves, and the game may stutter or show the original picture for a moment. Test your pack on a modest card before you publish it, and
+tell players what it asks for in the pack's description. Large pictures were checked against the format's limits, but **not measured in the game**: how
+far each card goes is not known yet. For most packs 2x and 4x give the best result for the memory they cost.
+
+- Prefer **2x for most textures and 4x only where the player looks**, such as faces and hands. Keep 8K for the few textures where it shows, and say so in the description.
 - Do not enlarge what the player cannot see well: tiny, dark, or fast textures.
 - The **Medium** quality setting makes players with smaller cards use each texture at twice the game's size, whatever your pictures' size, so a pack
   with 4x pictures still helps them, at a quarter of the memory. Medium skips the largest levels, so it is the 2x level of your picture that they see: make it good too.
