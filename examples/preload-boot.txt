@@ -1,0 +1,4 @@
+# The first picture the game shows when it starts. The game draws it for a few frames and then stops to load, so a replacement that
+# has not been read by then is never seen. Add this line to your preload.txt, beside the menus' list.
+# The hash is of the game's own 512 x 512 texture in the supported USA and Europe release.
+6e4fa92d10639da7

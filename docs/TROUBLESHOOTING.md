@@ -36,9 +36,10 @@ If a compile takes very long: the **Best** quality is slow on purpose (about 1.5
 
 | Symptom | Cause and fix |
 | --- | --- |
-| Nothing changed in Developer mode | Restart the game: it reads the folder when it starts. Check the launcher's Developer page says it found pictures, and that you edited the files **in that folder**. Only the Vulkan renderer replaces textures for now. |
+| Nothing changed in Developer mode | Restart the game: it reads the folder when it starts. Check the launcher's Developer page says it found pictures, and that you edited the files **in that folder**. |
 | Only some of my pictures show | Only pictures whose pixels differ from the extraction count. A texture the game draws in places you have not visited has not been drawn yet. Textures with their replacement still being read show the original for a few frames. |
 | A menu shows the original for a moment, then changes | List the menu's textures in `preload.txt` (see the guide). |
+| The picture the game shows when it starts stays the original | The game draws it for only a few frames before it stops to load. List it in `preload.txt`: `examples/preload-boot.txt` has its hash. |
 | Textures flicker or load late, with a big pack | The pack is larger than the video memory budget, so pictures are being read again as the game draws them. Make fewer or smaller pictures, or let players use **Medium** quality. |
 | My pack installs but changes nothing | The pack may have been made for another version of the game: its hashes do not match. Extract again from the game you play. |
 | Two packs fight over a texture | The pack higher in the order on the Mods page wins. Players change the order with Up and Down. |

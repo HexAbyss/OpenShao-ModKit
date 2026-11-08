@@ -14,7 +14,7 @@ Extracts the textures of Mortal Kombat: Shaolin Monks from your own copy of the 
 3. **Try them in the game** without building anything: turn on Developer on OpenShao's Files page and choose the folder. Only the pictures you
    changed count (a single changed pixel is enough). Restart the game to see a change.
 4. **Compile** when they are ready: `modkit init <folder>` writes a `pack.json` to fill in (id, name, version, authors, summary,
-   description, credits, license, website); put `logo.png` (up to 256 x 256) and `preload.txt` (the hashes the menus draw, one per line) beside it.
+   description, credits, license, website); put `logo.png` (up to 256 x 256) and `preload.txt` (the hashes drawn at once, those of the menus and of the first picture the game shows, one per line) beside it.
    Then `modkit compile <folder> <pack.ostp>`. Only the edited pictures go in, each with all its mip levels, as BC1 (no transparency)
    or BC3 (transparency), encoded with rgbcx at its highest level. It takes minutes, once, and the player never pays that time.
 5. `modkit verify <pack.ostp>` checks the file against the format. Install the pack from OpenShao's Mods page with **Install from file**.

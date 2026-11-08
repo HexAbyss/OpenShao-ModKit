@@ -93,7 +93,7 @@ The launcher's Developer page says how many pictures it found, and the game's lo
 In this mode nothing is compressed, so a very large number of large pictures may use a lot of video memory; OpenShao keeps the pictures within a
 budget (see [Making good packs](#making-good-packs)).
 
-Only the Vulkan renderer replaces textures for now.
+Both renderers, Direct3D 12 and Vulkan, replace textures.
 
 ## 4. Compile the pack
 
@@ -145,13 +145,18 @@ modkit compile textures MyPack.ostp --encoder rgbcx:10     # fast, to try
 
 `min_recomp` is the oldest OpenShao the pack works with; keep `0.4.1` unless you know you need a newer one.
 
-### Textures the menus draw (`preload.txt`)
+### Textures drawn at once (`preload.txt`)
 
-The game draws its menus before OpenShao has read your pictures, so the first frames of a menu may show the original texture and then switch. To
-avoid that, list the textures the menus use in a file named `preload.txt` beside your pictures, **one hash per line** (`#` starts a comment); the pack
-carries the list and OpenShao reads those pictures first. Only hashes the pack has count. [`examples/preload-menus.txt`](../examples/preload-menus.txt)
-is a list of the textures of the first menu screens, found by playing the game; use it as a start. Keep the list to what the menus need: each listed
-picture takes video memory from the start.
+The game draws a texture before OpenShao has read your picture for it, so its first frames show the original texture and then switch. For a menu
+that is a flicker. For the **first picture the game shows**, it can mean the original stays: the game draws that picture for only a few frames and
+then stops to load, so a picture that has not been read by then is not seen. To avoid both, list those textures in a file named `preload.txt`
+beside your pictures, **one hash per line** (`#` starts a comment); the pack carries the list and OpenShao reads those pictures first. Only hashes
+the pack has count.
+
+- [`examples/preload-menus.txt`](../examples/preload-menus.txt) is a list of the textures of the first menu screens, found by playing the game.
+- [`examples/preload-boot.txt`](../examples/preload-boot.txt) is the first picture the game shows. Put it in your list as well.
+
+Keep the list to what is drawn at once: each listed picture takes video memory from the start.
 
 ### What the compiler does
 
