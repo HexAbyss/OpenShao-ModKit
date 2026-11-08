@@ -29,10 +29,10 @@ The same operations are available from Python for scripts and batch tools: [docs
 Download the ModKit for your system from the [releases](https://github.com/HexAbyss/OpenShao-ModKit/releases) page. It is one file that needs no Python
 and nothing else to install.
 
-- **Windows:** run `OpenShao-ModKit.exe`. The file is not code signed, so SmartScreen can stop it once: choose **More info**, then **Run anyway**
+- **Windows:** run `OpenShao-ModKit-Windows-x64.exe`. The file is not code signed, so SmartScreen can stop it once: choose **More info**, then **Run anyway**
   ([details](docs/TROUBLESHOOTING.md)).
-- **Linux:** run `OpenShao-ModKit` (glibc 2.28 or later). The window needs OpenGL. A ModKit command as the first argument runs in the terminal:
-  `OpenShao-ModKit extract <game> <folder>`.
+- **Linux:** run `OpenShao-ModKit-Linux-x64` (glibc 2.28 or later). The window needs OpenGL. A ModKit command as the first argument runs in the terminal:
+  `OpenShao-ModKit-Linux-x64 extract <game> <folder>`.
 
 The first run unpacks the ModKit into your user data folder (`%LOCALAPPDATA%\OpenShao\ModKit` or `~/.local/share/OpenShao/ModKit`); the window opens in about a
 second after that. To build it yourself, or to run it from the source, see [docs/BUILDING.md](docs/BUILDING.md).
