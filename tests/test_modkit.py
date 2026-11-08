@@ -659,8 +659,9 @@ class VerifyTest(unittest.TestCase):
 
 
 def _find_reader_source():
-    """The OpenShao source (for the game's own reader), when it sits beside this repository or OPENSHAO_REPO points at it"""
-    for candidate in (os.environ.get('OPENSHAO_REPO'), str(Path(__file__).resolve().parents[2] / 'OpenShao-repo')):
+    """The OpenShao source (for the game's own reader), when it sits beside this repository as OpenShao or OpenShao-repo, or OPENSHAO_REPO points at it"""
+    beside = Path(__file__).resolve().parents[2]
+    for candidate in (os.environ.get('OPENSHAO_REPO'), str(beside / 'OpenShao'), str(beside / 'OpenShao-repo')):
         if candidate and (Path(candidate) / 'src' / 'texture_pack_file.cpp').is_file():
             return Path(candidate) / 'src'
     return None
