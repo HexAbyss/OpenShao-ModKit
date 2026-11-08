@@ -18,5 +18,6 @@ if exist "%WORK%" rmdir /s /q "%WORK%"
 set PYTHONDONTWRITEBYTECODE=1
 "%PY%" -m PyInstaller --noconfirm --distpath dist --workpath "%WORK%" packaging\modkit.spec > "%WORK%.log" 2>&1 || (powershell -NoProfile -Command "Get-Content -Tail 30 '%WORK%.log'" & exit /b 1)
 rem Control Flow Guard in the bootloader aborts the process when Unicorn runs: see disable_cfg.py.
-for %%f in (dist\modkit.exe dist\OpenShao-ModKit.exe) do "%PY%" "%~dp0disable_cfg.py" %%f || exit /b 1
+"%PY%" "%~dp0disable_cfg.py" dist\modkit.exe || exit /b 1
+call native\launcher\build.bat "%PY%" || exit /b 1
 echo built %CD%\dist\modkit.exe and %CD%\dist\OpenShao-ModKit.exe

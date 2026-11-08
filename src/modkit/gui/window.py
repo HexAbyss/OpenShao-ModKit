@@ -10,11 +10,18 @@ CAPTION_TEXT = (0xEC, 0xE5, 0xD6)
 ICON = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.ico')
 
 
-def close_splash():
-    """Closes the splash screen of the packaged executable, if there is one."""
+def signal_ready():
+    """Tells the launcher (OpenShao-ModKit.exe), which shows a splash screen, that the window is up. It names an event in MODKIT_READY."""
+    name = os.environ.get('MODKIT_READY')
+    if sys.platform != 'win32' or not name:
+        return
     try:
-        import pyi_splash
-        pyi_splash.close()
+        kernel32 = ctypes.windll.kernel32
+        kernel32.OpenEventW.restype = ctypes.c_void_p
+        event = kernel32.OpenEventW(0x0002, False, name)  # EVENT_MODIFY_STATE
+        if event:
+            kernel32.SetEvent(ctypes.c_void_p(event))
+            kernel32.CloseHandle(ctypes.c_void_p(event))
     except Exception:
         pass
 

@@ -24,11 +24,8 @@ SYSTEM = ('libX11.so', 'libXext.so', 'libXau.so', 'libXdmcp.so', 'libxcb.so', 'l
 a.binaries = [b for b in a.binaries if '/' in b[0] or not b[0].startswith(SYSTEM)]
 pyz = PYZ(a.pure)
 if sys.platform == 'win32':
-    # modkit.exe is the command line (a console, so a terminal waits for it and reads its output); OpenShao-ModKit.exe opens the window with
-    # no console, and shows a splash screen from the first moment, while the one-file executable unpacks itself.
-    icon = os.path.join(root, 'src', 'modkit', 'gui', 'app.ico')
-    exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='modkit', console=True, upx=False, icon=icon)
-    splash = Splash(os.path.join(root, 'packaging', 'windows', 'splash.png'), binaries=a.binaries, datas=a.datas, text_pos=None, always_on_top=False)
-    window = EXE(pyz, splash, a.scripts, a.binaries, a.datas, splash.binaries, [], name='OpenShao-ModKit', console=False, upx=False, icon=icon)
+    # modkit.exe is the command line: a console, so a terminal waits for it and reads its output. The window is opened by OpenShao-ModKit.exe
+    # (native/launcher), which starts this one without a console and shows the splash screen while it unpacks.
+    exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='modkit', console=True, upx=False, icon=os.path.join(root, 'src', 'modkit', 'gui', 'app.ico'))
 else:
     exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='modkit', console=True, upx=False)

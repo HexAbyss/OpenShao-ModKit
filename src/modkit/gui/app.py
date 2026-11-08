@@ -43,6 +43,7 @@ class App:
         self.dialog = None                                # (what, dialog): a native dialog that is open
         self.exit_when_done = exit_when_done
         self.frames = 0
+        self.shown, self.hold = 0.0, 0.0                  # the ring's fraction on screen, and how long it has stayed full
         self.loaded_folder = None
         self.scroll_to_outcome = False
         threading.Thread(target=art.enso_precompute, args=(170, 34.0), daemon=True).start()   # the progress circle, ready before it is needed
@@ -100,7 +101,23 @@ class App:
 
     @property
     def busy(self):
-        return self.task is not None and not self.task.finished
+        return self.task is not None and (not self.task.finished or self.task_page is not None)  # a job that ended is still shown until collected
+
+    def advance(self):
+        """Moves the ring toward the job's progress. A job that ends keeps the ring on screen until it has filled to 100%, however small the job
+        was, so the user sees it complete."""
+        t = self.task
+        if not t or self.task_page is None:
+            return
+        dt = min(imgui.get_io().delta_time, 0.1)
+        target = 1.0 if t.finished and not t.error and not t.cancel_requested else t.fraction
+        self.shown = min(target, self.shown + max(0.7, (target - self.shown) * 3.0) * dt) if target > self.shown else self.shown
+        if self.shown >= 1.0:
+            self.hold += dt
+
+    def settling(self):
+        t = self.task
+        return (self.task_page in ('Extract', 'Compile') and not t.error and not t.cancel_requested and (self.shown < 1.0 or self.hold < 0.45))
 
     # ---- jobs ----
     def start_extract(self):
@@ -175,11 +192,12 @@ class App:
 
     def start(self, page, name, job):
         self.task, self.task_page, self.task_name = Task(name, job), page, name
+        self.shown, self.hold = 0.0, 0.0
 
     def collect(self):
         """When a job has just finished, turns its outcome into what the page shows"""
         t = self.task
-        if not t or not t.finished or self.task_page is None:
+        if not t or not t.finished or self.task_page is None or self.settling():
             return
         page, self.task_page = self.task_page, None
         self.scroll_to_outcome = True
@@ -213,7 +231,10 @@ class App:
     # ---- drawing ----
     def gui(self):
         self.frames += 1
+        if self.frames == 3:  # the first frames are on screen: the splash screen can go
+            window.signal_ready()
         self.poll_dialog()
+        self.advance()
         self.collect()
         vp = imgui.get_main_viewport()
         W, H = vp.size.x, vp.size.y
@@ -276,8 +297,8 @@ class App:
         stroke = radius * 0.2
         art.glow(c, cx, cy, radius, 1.0)
         art.draw_enso(c, cx, cy, radius, stroke, 1.0, 0.09, False, PAPER, wait=False)
-        art.draw_enso(c, cx, cy, radius, stroke, t.fraction, wait=False)
-        c.text_centered(MEDIUM, 54, cx + 4, cy - 30, rgb(PAPER), '%d%%' % int(t.fraction * 100))
+        art.draw_enso(c, cx, cy, radius, stroke, self.shown, wait=False)
+        c.text_centered(MEDIUM, 54, cx + 4, cy - 30, rgb(PAPER), '%d%%' % int(self.shown * 100))
         if t.extra is not None:
             detail = '%d textures found' % t.extra
         else:
@@ -334,32 +355,28 @@ class App:
         if button('Choose##pack', L, right - 84, y + 16, right, y + 50, 'Choose', False, not busy):
             self.pick('pack')
         y += 60
-        fields = (('name', 'Name', 'The name players see', 64), ('id', 'Id', 'Letters, digits, - or _ (no spaces)', 80),
-                  ('version', 'Version', '1.0.0', 16), ('authors', 'Authors', 'Your name, separated by commas', 200),
-                  ('summary', 'Summary', 'One sentence, up to 200 characters', 200))
-        for key, label, hint, limit in fields:
+        # (key, label, limit, hint, lines): one line is a plain field; more are boxes whose text wraps at the edge. A box of more than three
+        # lines takes line breaks (a description); the others are one paragraph.
+        fields = (('name', 'Name', 64, 'The name players see', 1), ('id', 'Id', 80, 'Letters, digits, - or _ (no spaces)', 1),
+                  ('version', 'Version', 16, '1.0.0', 1), ('authors', 'Authors', 200, 'Your name, separated by commas', 2),
+                  ('summary', 'Summary', 200, 'One sentence, up to 200 characters', 2),
+                  ('description', 'Description', 4000, 'Opened by Details on the Mods page', 4),
+                  ('credits', 'Credits', 4000, 'Who made the pictures, and where they come from', 4),
+                  ('website', 'Website', 256, 'A link to the pack', 2), ('license', 'License', 128, 'For example CC BY 4.0', 2))
+        optional = ('description', 'credits', 'website', 'license')
+        for key, label, limit, hint, count in fields:
+            height = 34 if count == 1 else 14 + 25 * count
             L.rule(48, right, y)
             L.text(SEMIBOLD, 20, 48, y + 25, rgb(PAPER), label)
-            changed, value = text_field('f-' + key, L, 170, y + 11, right - 170, self.info[key], hint)
+            if key in optional:
+                L.text(REGULAR, 17, 48, y + 52, rgb(DIM), 'Optional')
+            if count == 1:
+                changed, value = text_field('f-' + key, L, 170, y + 11, right - 170, self.info[key], hint)
+            else:
+                changed, value = text_area('f-' + key, L, 170, y + 11, right - 170, height, self.info[key], limit, single=count < 4, hint=hint)
             if changed:
                 self.info[key] = value[:limit]
-            y += 60
-        for key, label, limit, hint in (('description', 'Description', 4000, 'Opened by Details on the Mods page'),
-                                         ('credits', 'Credits', 4000, 'Who made the pictures, and where they come from')):
-            L.rule(48, right, y)
-            L.text(SEMIBOLD, 20, 48, y + 25, rgb(PAPER), label)
-            L.text(REGULAR, 17, 48, y + 52, rgb(DIM), 'Optional')
-            changed, value = text_area('a-' + key, L, 170, y + 11, right - 170, 110, self.info[key], limit)
-            if changed:
-                self.info[key] = value
-            y += 132
-        for key, label, hint, limit in (('website', 'Website', 'Optional, a link to the pack', 256), ('license', 'License', 'Optional, e.g. CC BY 4.0', 128)):
-            L.rule(48, right, y)
-            L.text(SEMIBOLD, 20, 48, y + 25, rgb(PAPER), label)
-            changed, value = text_field('f-' + key, L, 170, y + 11, right - 170, self.info[key], hint)
-            if changed:
-                self.info[key] = value[:limit]
-            y += 60
+            y += height + 26
         row(L, y, right, 'Logo', os.path.basename(self.logo) if self.logo else 'Optional, up to 256 x 256', 2, MIST if self.logo else DIM)
         if button('Choose##logo', L, right - 84, y + 16, right, y + 50, 'Choose', False, not busy):
             self.pick('logo')
@@ -451,10 +468,6 @@ def run(**options):
     params.callbacks.setup_imgui_style = art.apply_style
     params.callbacks.show_gui = app.gui
 
-    def after_init():
-        window.style(TITLE)
-        window.close_splash()
-
-    params.callbacks.post_init = after_init
+    params.callbacks.post_init = lambda: window.style(TITLE)
     immapp.run(params)
     return 0

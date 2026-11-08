@@ -62,19 +62,28 @@ def row(c, y, right, label, value, buttons=1, value_color=MIST, value_x=170):
     c.text(REGULAR, 19, value_x, y + 25, rgb(value_color), c.fit(REGULAR, 19, width, value))
 
 
-def text_area(id, c, x, y, width, height, value, limit):
-    """A multi-line text field, in the same style: (changed, value)"""
+def text_area(id, c, x, y, width, height, value, limit, single=False, hint=''):
+    """A text field whose text wraps at the field's edge, in the same style: (changed, value). A `single` one is one paragraph: Enter adds no
+    line break and a pasted one is dropped."""
     imgui.set_cursor_screen_pos(c.p(x, y))
     imgui.push_font(art._fonts[REGULAR], 19)
     imgui.push_style_var(imgui.StyleVar_.frame_padding, (14, 8))
     imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
     imgui.push_style_var(imgui.StyleVar_.frame_rounding, 9)
-    changed, value = imgui.input_text_multiline('##' + id, value, (width, height), imgui.InputTextFlags_.none)
+    flags = imgui.InputTextFlags_.word_wrap
+    if single:
+        flags |= imgui.InputTextFlags_.ctrl_enter_for_new_line
+    changed, value = imgui.input_text_multiline('##' + id, value, (width, height), flags)
     hovered = imgui.is_item_hovered()
+    if hint and not value:
+        pos = imgui.get_item_rect_min()
+        imgui.get_window_draw_list().add_text((pos.x + 14, pos.y + 8), imgui.get_color_u32(imgui.Col_.text_disabled), hint)
     imgui.pop_style_var(3)
     imgui.pop_font()
     if hovered:
         imgui.set_mouse_cursor(imgui.MouseCursor_.text_input)
+    if single:
+        value = value.replace('\r', ' ').replace('\n', ' ')
     return changed, value[:limit]
 
 
