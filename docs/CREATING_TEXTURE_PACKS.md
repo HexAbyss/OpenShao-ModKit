@@ -27,7 +27,7 @@ Other guides: [what the game's textures are](TEXTURES.md), [when something goes 
                                                             MyPack.ostp  ──▶  OpenShao: Mods ▸ Install from file
 ```
 
-The ModKit has a window (on Windows, open `OpenShao-ModKit.exe`; on Linux, `modkit` with no command) and a command line (`modkit extract`, `modkit compile`, ...); both do the same work. This
+The ModKit has a window (on Windows, open `OpenShao-ModKit.exe`; on Linux, open `OpenShao-ModKit`) and a command line (`modkit extract`, `modkit compile`, ...; on Linux the same file runs them: `OpenShao-ModKit extract ...`); both do the same work. This
 guide shows the window first and the command beside it.
 
 **Opening it on Windows for the first time.** `OpenShao-ModKit.exe` is not signed with a paid code-signing certificate, so Windows SmartScreen
@@ -41,6 +41,8 @@ you choose and `%LOCALAPPDATA%\OpenShao\ModKit`, where it unpacks itself.
 
 **Window:** open the **Extract** page, **Choose** the game's disc image (`.iso`) and an empty folder for the pictures, and press **Extract**.
 **Command:** `modkit extract "Mortal Kombat - Shaolin Monks.iso" textures`
+
+![The Extract page of the ModKit: the game, the folder and the Extract button](images/window-extract.png)
 
 It takes about three minutes on six cores (about fifteen on one). Nothing is changed in your game and nothing of it is kept anywhere else: the
 ModKit reads the game and writes pictures into your folder. A folder with `default.xbe` and the `GAMEDATA.WAD` to `GAMEDATA.WAK` files works in place
@@ -123,6 +125,14 @@ Compiling turns the edited pictures into **one file**, `MyPack.ostp`. It is done
 | **License** | optional, up to 128 characters, such as `CC BY 4.0`. Also under **Details** |
 | **Logo** | optional, a picture up to 256 x 256 (it is shrunk to fit) |
 | **Quality** | **Best** is the encoder at its highest level and takes the longest; **Fast** is about ten times faster with a little less quality, for trying |
+
+The page scrolls, and the fields are, in order:
+
+![The Compile page, top: pictures folder, pack file, name, id, version and authors](images/window-compile-1.png)
+
+![The Compile page, middle: summary, description and credits](images/window-compile-2.png)
+
+![The Compile page, bottom: website, license, logo, quality and the Compile button](images/window-compile-3.png)
 
 Press **Compile**. A ring shows the progress, with the time left and a **Cancel** button. When it ends, the page says how many textures went in and
 how large the pack is, and that it was checked against the format.

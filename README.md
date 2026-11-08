@@ -42,9 +42,14 @@ same.
 
 ## Install
 
-**The executable (Linux).** `packaging/linux/build.sh` (needs Docker) builds `dist/modkit`, one file of about 40 MB that runs on any system with
-glibc 2.28 or later, with no Python and nothing to install. It takes the commands above. With no command (double-click) it opens the graphical interface
-(`modkit gui`): Extract, Compile (pack information, logo, quality), Verify and About pages, with a brush circle as the progress of a long job.
+**The executable (Linux).** `packaging/linux/build.sh` (needs Docker) builds `dist/OpenShao-ModKit` and the folder `dist/modkit`. `OpenShao-ModKit`
+(about 58 MB) is the one to give to people: a single file that runs on any system with glibc 2.28 or later, needs no Python and nothing to install, and
+opens the window (`modkit gui`: Extract, Compile, Verify and About pages, with a brush circle as the progress of a long job) with a splash screen. It
+carries the ModKit inside itself (a tar.gz) and, on the first run, unpacks it with the system's `tar` to `~/.local/share/OpenShao/ModKit` (or under
+`$XDG_DATA_HOME`; checked against its SHA-256; older versions are removed); after that the window opens in about a second. A command of the ModKit as
+the first argument (`OpenShao-ModKit extract ...`) runs it in the terminal, with no splash. `dist/modkit/modkit` is that same ModKit, for the commands
+above in a terminal. The splash screen needs a compositing window manager (every usual desktop has one) and X11 (Xwayland on Wayland); without them the
+window opens without it.
 
 **The executables (Windows).** `packaging\windows\build.bat` (from an x64 Native Tools prompt for Visual Studio, with a Python that has PyInstaller, numpy,
 Pillow, unicorn and imgui-bundle) builds `dist\OpenShao-ModKit.exe` and the folder `dist\modkit`. `OpenShao-ModKit.exe` (about 45 MB) is the one to give to people: a single file that
