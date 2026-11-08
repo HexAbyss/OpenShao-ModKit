@@ -23,11 +23,12 @@ SYSTEM = ('libX11.so', 'libXext.so', 'libXau.so', 'libXdmcp.so', 'libxcb.so', 'l
 # Only top-level entries are excluded: the wheels' own copies (in *.libs/, with a hash in the file name) are what their extension modules link to.
 a.binaries = [b for b in a.binaries if '/' in b[0] or not b[0].startswith(SYSTEM)]
 pyz = PYZ(a.pure)
-if sys.platform == 'win32':
-    # A folder, dist\modkit\ (modkit.exe and its files): a one-file executable unpacks itself into %TEMP% at every start, which takes seconds. The folder
-    # is the command line (a console, so a terminal waits for it and reads its output). The window is opened by OpenShao-ModKit.exe (native/launcher),
-    # which carries the folder zipped, unpacks it once and starts it without a console, with a splash screen.
-    exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='modkit', console=True, upx=False, icon=os.path.join(root, 'src', 'modkit', 'gui', 'app.ico'))
+if sys.platform in ('win32', 'linux'):
+    # A folder, dist/modkit/ (the program `modkit` and its files): a one-file executable unpacks itself into a temporary folder at every start, which takes
+    # seconds. The folder is the command line (a console, so a terminal waits for it and reads its output). The window is opened by OpenShao-ModKit
+    # (native/launcher), which carries the folder compressed, unpacks it once and starts it, with a splash screen.
+    icon = os.path.join(root, 'src', 'modkit', 'gui', 'app.ico') if sys.platform == 'win32' else None
+    exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='modkit', console=True, upx=False, icon=icon)
     COLLECT(exe, a.binaries, a.datas, name='modkit', upx=False)
 else:
     exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='modkit', console=True, upx=False)

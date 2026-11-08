@@ -1,5 +1,5 @@
-"""The look of the native window on Windows: title bar colors and icon. Every call is best effort, because older Windows versions lack some of
-the attributes and the window is usable without them."""
+"""The native window's title bar colors and icon (Windows) and the signal to the launcher that the window is up (both systems). Every call is
+best effort, because older Windows versions lack some of the attributes and the window is usable without them."""
 import ctypes
 import os
 import sys
@@ -11,9 +11,19 @@ ICON = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.ico')
 
 
 def signal_ready():
-    """Tells the launcher (OpenShao-ModKit.exe), which shows a splash screen, that the window is up. It names an event in MODKIT_READY."""
+    """Tells the launcher (OpenShao-ModKit), which shows a splash screen, that the window is up. On Windows MODKIT_READY names an event; on
+    Linux MODKIT_READY_FD is a pipe the launcher left open, and a byte is written to it."""
+    if sys.platform != 'win32':
+        descriptor = os.environ.pop('MODKIT_READY_FD', '')
+        if descriptor.isdigit():
+            try:
+                os.write(int(descriptor), b'1')
+                os.close(int(descriptor))
+            except OSError:
+                pass
+        return
     name = os.environ.get('MODKIT_READY')
-    if sys.platform != 'win32' or not name:
+    if not name:
         return
     try:
         kernel32 = ctypes.windll.kernel32
