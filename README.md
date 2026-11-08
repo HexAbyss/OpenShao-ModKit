@@ -33,7 +33,8 @@ and nothing else to install.
   ([details](docs/TROUBLESHOOTING.md)).
 - **Linux:** download `OpenShao-ModKit-Linux-x64.tar.gz` (glibc 2.28 or later), extract it and run `OpenShao-ModKit-Linux-x64`. The window needs OpenGL. If your file
   manager says it cannot open the file, allow executing it first: right-click, **Properties**, **Permissions**, **Allow executing file as program**
-  (or `chmod +x OpenShao-ModKit-Linux-x64`). A ModKit command as the first argument runs in the terminal: `OpenShao-ModKit-Linux-x64 extract <game> <folder>`.
+  (or `chmod +x OpenShao-ModKit-Linux-x64`). On Ubuntu, do not run it from the Desktop folder: the Desktop icons do not start programs when they are
+  double-clicked, so extract it into another folder, such as Downloads or your Home folder. A ModKit command as the first argument runs in the terminal: `OpenShao-ModKit-Linux-x64 extract <game> <folder>`.
 
 The first run unpacks the ModKit into your user data folder (`%LOCALAPPDATA%\OpenShao\ModKit` or `~/.local/share/OpenShao/ModKit`); the window opens in about a
 second after that. To build it yourself, or to run it from the source, see [docs/BUILDING.md](docs/BUILDING.md).
