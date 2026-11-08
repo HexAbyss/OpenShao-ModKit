@@ -52,6 +52,7 @@ If a compile takes very long: the **Best** quality is slow on purpose (about 1.5
 | Symptom | Cause and fix |
 | --- | --- |
 | The file manager says "Can't open the file" or "Failed to find the default application" for `OpenShao-ModKit-Linux-x64` | The file lost its permission to run when it was copied or downloaded without the archive. Extract it from `OpenShao-ModKit-Linux-x64.tar.gz`, or allow executing it: right-click, **Properties**, **Permissions**, **Allow executing file as program**, or `chmod +x OpenShao-ModKit-Linux-x64`. |
+| On Ubuntu, `OpenShao-ModKit-Linux-x64` on the Desktop shows "Can't open the file" even though it is allowed to run | The icons of the Ubuntu Desktop are handled by a desktop extension that opens documents and `.desktop` launchers but does not run programs, so it looks for an application to open the file with and finds none. The file itself is fine and runs from any other folder. Move it to Downloads or your Home folder and open it there. |
 | It does not open, or `Failed to create ... window` | The window needs OpenGL and the usual desktop libraries of your system. Use the command line (`modkit extract ...`) as a fallback; it needs nothing else. |
 | **Choose** does nothing | The file dialog uses `zenity` or `kdialog`; install one of them, or type the paths on the command line. |
 
