@@ -27,10 +27,10 @@ Other guides: [what the game's textures are](TEXTURES.md), [when something goes 
                                                             MyPack.ostp  ──▶  OpenShao: Mods ▸ Install from file
 ```
 
-The ModKit has a window (on Windows, open `OpenShao-ModKit-Windows-x64.exe`; on Linux, extract `OpenShao-ModKit-Linux-x64.tar.gz` and open `OpenShao-ModKit-Linux-x64`) and a command line (`modkit extract`, `modkit compile`, ...; on Linux the same file runs them: `OpenShao-ModKit-Linux-x64 extract ...`); both do the same work. This
+The ModKit has a window (extract the download for your system: on Windows, open `OpenShao-ModKit.exe`; on Linux, open `OpenShao-ModKit`) and a command line (`modkit extract`, `modkit compile`, ...; on Linux the same file runs them: `./OpenShao-ModKit extract ...`); both do the same work. This
 guide shows the window first and the command beside it.
 
-**Opening it on Windows for the first time.** `OpenShao-ModKit-Windows-x64.exe` is not code signed, so SmartScreen can stop it once with "Windows protected your PC".
+**Opening it on Windows for the first time.** `OpenShao-ModKit.exe` is not code signed, so SmartScreen can stop it once with "Windows protected your PC".
 Choose **More info**, then **Run anyway**. [TROUBLESHOOTING](TROUBLESHOOTING.md) has the other cases.
 
 ## 1. Extract the game's textures

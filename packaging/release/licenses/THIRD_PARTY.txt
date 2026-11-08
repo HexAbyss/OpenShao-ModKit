@@ -1,0 +1,29 @@
+Third party software in the OpenShao ModKit
+
+The ModKit is distributed under GPL-2.0-or-later. See LICENSE.txt. It carries the programs and libraries below, each under its own license.
+The license does not cover the original game or its assets, which the ModKit reads from your copy and does not store.
+
+Dear ImGui and imgui-bundle (https://github.com/pthom/imgui_bundle), the window
+  MIT. See imgui_bundle-LICENSE.txt.
+
+NumPy (https://numpy.org)
+  BSD-3-Clause, with the licenses of the libraries it bundles. See NumPy-LICENSE.txt.
+
+Pillow (https://python-pillow.org)
+  MIT-CMU (HPND), with the licenses of the libraries it bundles. See Pillow-LICENSE.txt.
+
+Unicorn Engine 2 (https://www.unicorn-engine.org)
+  GPL-2.0. The complete license is in LICENSE.txt. The ModKit uses it to run the game's texture routines.
+
+rgbcx, from bc7enc_rdo (https://github.com/richgel999/bc7enc_rdo), the BC1 and BC3 encoder
+  Public domain or MIT, at your choice. See bc7enc_rdo-LICENSE.txt.
+
+stb_dxt (https://github.com/nothings/stb)
+  Public domain or MIT, at your choice. See stb_dxt-LICENSE.txt.
+
+Hanken Grotesk (https://github.com/marcologous/hanken-grotesk), the window's typeface
+  SIL Open Font License 1.1. See HankenGrotesk-OFL.txt.
+
+Python (https://www.python.org) and PyInstaller (https://pyinstaller.org), which run and carry the program
+  Python: PSF License. See Python-PSF.txt.
+  PyInstaller: GPL-2.0-or-later with an exception that allows distributing the programs it builds under any license.
