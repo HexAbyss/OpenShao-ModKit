@@ -231,7 +231,8 @@ class App:
     # ---- drawing ----
     def gui(self):
         self.frames += 1
-        if self.frames == 3:  # the first frames are on screen: the splash screen can go
+        if self.frames == 3:  # the first frames are on screen: the window goes in front, and the splash screen can go
+            window.bring_to_front(TITLE)
             window.signal_ready()
         self.poll_dialog()
         self.advance()

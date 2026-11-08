@@ -20,7 +20,7 @@ namespace {
 
 constexpr int kRing = 100, kFontRegular = 101, kFontSemiBold = 102;
 constexpr int kWidth = 360, kHeight = 330;       // of the splash, in logical pixels
-constexpr double kPhase = 1.7;                   // seconds to draw the circle in, and the same to draw it out
+constexpr double kPhase = 1.0;                  // seconds to draw the circle in, and the same to draw it out
 constexpr double kDotsCycle = 2.0;
 constexpr double kFadeOut = 0.25;
 constexpr double kGiveUp = 180.0;                // seconds without a signal after which the splash goes away anyway
@@ -269,6 +269,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         MessageBoxW(nullptr, L"modkit.exe could not be started.", L"OpenShao ModKit", MB_OK | MB_ICONERROR);
         return 1;
     }
+
+    AllowSetForegroundWindow(ASFW_ANY);  // this program was started by the user, so it may let the ModKit window come to the front
 
     ULONG_PTR token = 0;
     Gdiplus::GdiplusStartupInput input;

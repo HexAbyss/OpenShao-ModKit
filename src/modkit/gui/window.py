@@ -63,5 +63,48 @@ def style(title):
                 user32.SendMessageW(hwnd, 0x80, kind, icon)  # WM_SETICON
         # the title bar is repainted with the new colors
         user32.SetWindowPos(hwnd, None, 0, 0, 0, 0, 0x27)  # SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED
+        center(hwnd)
+    except Exception:
+        pass
+
+
+def center(hwnd):
+    """Puts the window in the middle of the work area of the screen the user is on (the one with the active window)"""
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+
+    class Info(ctypes.Structure):
+        _fields_ = [('size', wintypes.DWORD), ('monitor', wintypes.RECT), ('work', wintypes.RECT), ('flags', wintypes.DWORD)]
+
+    user32.MonitorFromWindow.restype = wintypes.HANDLE
+    user32.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
+    monitor = user32.MonitorFromWindow(user32.GetForegroundWindow() or hwnd, 2)  # MONITOR_DEFAULTTONEAREST
+    info = Info(ctypes.sizeof(Info))
+    user32.GetMonitorInfoW.argtypes = [wintypes.HANDLE, ctypes.POINTER(Info)]
+    if not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
+        return
+    rect = wintypes.RECT()
+    user32.GetWindowRect(hwnd, ctypes.byref(rect))
+    w, h = rect.right - rect.left, rect.bottom - rect.top
+    x = info.work.left + (info.work.right - info.work.left - w) // 2
+    y = info.work.top + (info.work.bottom - info.work.top - h) // 2
+    user32.SetWindowPos(hwnd, None, x, y, 0, 0, 0x15)  # SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+
+
+def bring_to_front(title):
+    """Puts the window above every other and gives it the focus. Windows lets only the foreground process do that, so the launcher allows it
+    (AllowSetForegroundWindow) and the topmost flag is set and cleared as a second way to raise it."""
+    if sys.platform != 'win32':
+        return
+    try:
+        user32 = ctypes.windll.user32
+        hwnd = _window(title)
+        if not hwnd:
+            return
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+        user32.SetWindowPos(hwnd, ctypes.c_void_p(-1), 0, 0, 0, 0, 0x13)  # HWND_TOPMOST; SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+        user32.SetWindowPos(hwnd, ctypes.c_void_p(-2), 0, 0, 0, 0, 0x03)  # HWND_NOTOPMOST; the window stays where it is in the order
+        user32.SetForegroundWindow(hwnd)
     except Exception:
         pass
