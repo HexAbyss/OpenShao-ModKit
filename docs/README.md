@@ -7,6 +7,7 @@ For people who make texture packs:
 3. **[When something goes wrong](TROUBLESHOOTING.md)**: every message, its cause and its fix.
 4. **[Automating with Python](AUTOMATION.md)**: for batch work and AI tools.
 
-For people who build the ModKit or the game: the [repository README](../README.md), and in the OpenShao repository,
-[TEXTURE_PACK_FORMAT.md](https://github.com/OAleex/OpenShao/blob/main/docs/TEXTURE_PACK_FORMAT.md) (the `.ostp` file format) and
-[MODS.md](https://github.com/OAleex/OpenShao/blob/main/docs/MODS.md) (how the launcher uses mods).
+For people who build the ModKit: [Building the ModKit](BUILDING.md).
+
+In the OpenShao repository: [TEXTURE_PACK_FORMAT.md](https://github.com/HexAbyss/OpenShao/blob/feat/hd-texture-packs/docs/TEXTURE_PACK_FORMAT.md) (the `.ostp` file format) and
+[MODS.md](https://github.com/HexAbyss/OpenShao/blob/feat/hd-texture-packs/docs/MODS.md) (how the launcher uses mods).
