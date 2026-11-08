@@ -465,6 +465,7 @@ def run(**options):
     params.imgui_window_params.show_menu_bar = False
     params.imgui_window_params.default_imgui_window_type = hello_imgui.DefaultImGuiWindowType.no_default_window
     params.fps_idling.enable_idling = False
+    params.ini_disable = True  # the window has no layout to remember, and a settings file would be written into the folder it is started from
     params.callbacks.load_additional_fonts = art.load_fonts
     params.callbacks.setup_imgui_style = art.apply_style
     params.callbacks.show_gui = app.gui
