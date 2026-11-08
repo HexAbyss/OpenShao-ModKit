@@ -185,7 +185,7 @@ def read_preload(folder):
     preload = []
     path = os.path.join(folder, 'preload.txt')
     if os.path.isfile(path):
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding='utf-8-sig') as f:  # a BOM from Notepad is not part of the text
             for line in f:
                 line = line.split('#')[0].strip()
                 if line:
@@ -199,7 +199,7 @@ def load_project(folder):
     if not os.path.isfile(path):
         raise ValueError('there is no pack.json in the folder; run "init" to write one and fill it in')
     try:
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding='utf-8-sig') as f:  # a BOM from Notepad is not part of the text
             info = json.load(f)
     except ValueError as error:
         raise ValueError('pack.json is not valid JSON: %s' % error)

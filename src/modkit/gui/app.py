@@ -9,12 +9,13 @@ from imgui_bundle import hello_imgui, imgui, immapp
 from imgui_bundle import portable_file_dialogs as pfd
 
 from .. import __version__
-from . import art
+from . import art, window
 from .art import DIM, EMBER, INK, MIST, MOSS, PAPER, REGULAR, SEMIBOLD, MEDIUM, WARNING, Canvas, rgb
 from .tasks import Task, clock
-from .widgets import button, header, item, link, row, switch, text_field
+from .widgets import button, header, item, link, row, switch, text_area, text_field
 
 WIDTH, HEIGHT = 1040, 640
+TITLE = 'OpenShao ModKit'
 PAGES = ('Extract', 'Compile', 'Verify', 'About')
 LICENSES = [('Dear ImGui', 'MIT'), ('imgui-bundle', 'MIT'), ('NumPy', 'BSD-3-Clause'), ('Pillow', 'MIT-CMU (HPND)'),
             ('Unicorn Engine', 'GPL-2.0'), ('rgbcx (bc7enc_rdo)', 'Public domain or MIT'), ('stb_dxt', 'Public domain or MIT'),
@@ -31,8 +32,10 @@ class App:
         self.game, self.out = game, out                   # extraction
         self.limit = limit
         self.pictures, self.pack_file = pictures or out, pack  # compilation
-        self.info = dict(name='', id='', version='1.0.0', authors='', summary='')
+        self.info = dict(name='', id='', version='1.0.0', authors='', summary='', description='', credits='', website='', license='')
         self.logo = ''
+        if self.pictures:
+            self.load_project_info()
         self.fast = False
         self.verify_file, self.verified = verify_file, None
         self.task, self.task_page = None, None
@@ -115,13 +118,13 @@ class App:
     def load_project_info(self):
         """Fills the pack information from the pack.json of the chosen folder, when it has one"""
         try:
-            with open(os.path.join(self.pictures, 'pack.json'), encoding='utf-8') as f:
+            with open(os.path.join(self.pictures, 'pack.json'), encoding='utf-8-sig') as f:
                 data = json.load(f)
         except (OSError, ValueError):
             return
         if not isinstance(data, dict):
             return
-        for key in ('name', 'id', 'version', 'summary'):
+        for key in ('name', 'id', 'version', 'summary', 'description', 'credits', 'website', 'license'):
             if isinstance(data.get(key), str):
                 self.info[key] = data[key]
         if isinstance(data.get('authors'), list):
@@ -143,9 +146,17 @@ class App:
             return
         info, logo, fast = self.pack_information(), self.logo.strip() or None, self.fast
         self.last = None
-        try:  # keep the information beside the pictures, so the next time it is already filled in
-            saved = dict(info, logo=os.path.basename(logo) if logo and os.path.dirname(logo) == folder else '')
-            with open(os.path.join(folder, 'pack.json'), 'w', encoding='utf-8') as f:
+        try:  # keep the information beside the pictures, so the next time it is already filled in; what the file has besides is kept
+            path = os.path.join(folder, 'pack.json')
+            saved = {}
+            try:
+                with open(path, encoding='utf-8-sig') as f:
+                    previous = json.load(f)
+                saved = previous if isinstance(previous, dict) else {}
+            except (OSError, ValueError):
+                pass
+            saved.update(info, logo=os.path.basename(logo) if logo and os.path.dirname(logo) == folder else '')
+            with open(path, 'w', encoding='utf-8') as f:
                 json.dump(saved, f, indent=2, ensure_ascii=False)
                 f.write('\n')
         except OSError:
@@ -333,6 +344,22 @@ class App:
             if changed:
                 self.info[key] = value[:limit]
             y += 60
+        for key, label, limit, hint in (('description', 'Description', 4000, 'Opened by Details on the Mods page'),
+                                         ('credits', 'Credits', 4000, 'Who made the pictures, and where they come from')):
+            L.rule(48, right, y)
+            L.text(SEMIBOLD, 20, 48, y + 25, rgb(PAPER), label)
+            L.text(REGULAR, 17, 48, y + 52, rgb(DIM), 'Optional')
+            changed, value = text_area('a-' + key, L, 170, y + 11, right - 170, 110, self.info[key], limit)
+            if changed:
+                self.info[key] = value
+            y += 132
+        for key, label, hint, limit in (('website', 'Website', 'Optional, a link to the pack', 256), ('license', 'License', 'Optional, e.g. CC BY 4.0', 128)):
+            L.rule(48, right, y)
+            L.text(SEMIBOLD, 20, 48, y + 25, rgb(PAPER), label)
+            changed, value = text_field('f-' + key, L, 170, y + 11, right - 170, self.info[key], hint)
+            if changed:
+                self.info[key] = value[:limit]
+            y += 60
         row(L, y, right, 'Logo', os.path.basename(self.logo) if self.logo else 'Optional, up to 256 x 256', 2, MIST if self.logo else DIM)
         if button('Choose##logo', L, right - 84, y + 16, right, y + 50, 'Choose', False, not busy):
             self.pick('logo')
@@ -414,7 +441,7 @@ class App:
 def run(**options):
     app = App(**options)
     params = hello_imgui.RunnerParams()
-    params.app_window_params.window_title = 'OpenShao ModKit'
+    params.app_window_params.window_title = TITLE
     params.app_window_params.window_geometry.size = (WIDTH, HEIGHT)
     params.app_window_params.window_geometry.size_auto = False
     params.imgui_window_params.show_menu_bar = False
@@ -423,5 +450,11 @@ def run(**options):
     params.callbacks.load_additional_fonts = art.load_fonts
     params.callbacks.setup_imgui_style = art.apply_style
     params.callbacks.show_gui = app.gui
+
+    def after_init():
+        window.style(TITLE)
+        window.close_splash()
+
+    params.callbacks.post_init = after_init
     immapp.run(params)
     return 0

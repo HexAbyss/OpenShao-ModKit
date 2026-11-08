@@ -62,6 +62,22 @@ def row(c, y, right, label, value, buttons=1, value_color=MIST, value_x=170):
     c.text(REGULAR, 19, value_x, y + 25, rgb(value_color), c.fit(REGULAR, 19, width, value))
 
 
+def text_area(id, c, x, y, width, height, value, limit):
+    """A multi-line text field, in the same style: (changed, value)"""
+    imgui.set_cursor_screen_pos(c.p(x, y))
+    imgui.push_font(art._fonts[REGULAR], 19)
+    imgui.push_style_var(imgui.StyleVar_.frame_padding, (14, 8))
+    imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
+    imgui.push_style_var(imgui.StyleVar_.frame_rounding, 9)
+    changed, value = imgui.input_text_multiline('##' + id, value, (width, height), imgui.InputTextFlags_.none)
+    hovered = imgui.is_item_hovered()
+    imgui.pop_style_var(3)
+    imgui.pop_font()
+    if hovered:
+        imgui.set_mouse_cursor(imgui.MouseCursor_.text_input)
+    return changed, value[:limit]
+
+
 def text_field(id, c, x, y, width, value, hint=''):
     """An ImGui text field styled to match the other widgets: (changed, value)"""
     imgui.set_cursor_screen_pos(c.p(x, y))

@@ -110,6 +110,10 @@ Compiling turns the edited pictures into **one file**, `MyPack.ostp`. It is done
 | **Version** | three numbers, like `1.0.0`. Raise it when you publish a change |
 | **Authors** | names separated by commas |
 | **Summary** | one sentence, up to 200 characters |
+| **Description** | optional, up to 4,000 characters. The player reads it under **Details** on the Mods page |
+| **Credits** | optional, up to 4,000 characters: who made the pictures and where they come from. Also under **Details** |
+| **Website** | optional, a link to the pack (up to 256 characters). Also under **Details** |
+| **License** | optional, up to 128 characters, such as `CC BY 4.0`. Also under **Details** |
 | **Logo** | optional, a picture up to 256 x 256 (it is shrunk to fit) |
 | **Quality** | **Best** is the encoder at its highest level and takes the longest; **Fast** is about ten times faster with a little less quality, for trying |
 
@@ -124,8 +128,8 @@ modkit compile textures MyPack.ostp
 modkit compile textures MyPack.ostp --encoder rgbcx:10     # fast, to try
 ```
 
-`pack.json` (the window writes the same file beside your pictures, so the second time everything is filled in) can also hold `description` (up to
-4,000 characters, shown under the pack's Details), `credits`, `license` and `website`:
+`pack.json` (the window writes the same file beside your pictures, so the second time everything is filled in, and it keeps any other field you
+put there) holds the same fields. Without a description, credits, website or license the pack has no **Details** link on the Mods page:
 
 ```json
 {
