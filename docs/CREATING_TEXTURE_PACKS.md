@@ -181,7 +181,7 @@ Keep the list to what is drawn at once: each listed picture takes video memory f
 **Details** shows your description, credits, website and license. Turn the pack on with its switch; the change applies the next time the game starts.
 
 **Test the finished pack**, not only your pictures: play with it on in the places you edited, with the two quality settings on the Mods page
-(**High**, and **Medium**, which uses each texture at twice the game's size). A pack that looks good only in the folder and not in the file has
+(**High**, and **Low**, which uses each texture at twice the game's size). A pack that looks good only in the folder and not in the file has
 usually lost something in compilation: check the textures that have transparency.
 
 **Share:** the `.ostp` is a single self-contained file. Anyone can install it from the Mods page the same way. When you publish a new version, raise
@@ -210,8 +210,8 @@ far each card goes is not known yet. For most packs 2x and 4x give the best resu
 
 - Prefer **2x for most textures and 4x only where the player looks**, such as faces and hands. Keep 8K for the few textures where it shows, and say so in the description.
 - Do not enlarge what the player cannot see well: tiny, dark, or fast textures.
-- The **Medium** quality setting makes players with smaller cards use each texture at twice the game's size, whatever your pictures' size, so a pack
-  with 4x pictures still helps them, at a quarter of the memory. Medium skips the largest levels, so it is the 2x level of your picture that they see: make it good too.
+- The **Low** quality setting makes players with smaller cards use each texture at twice the game's size, whatever your pictures' size, so a pack
+  with 4x pictures still helps them, at a quarter of the memory. Low skips the largest levels, so it is the 2x level of your picture that they see: make it good too.
 
 **File size.** The full game at 2x and 4x (4x up to 256 pixels, 2x up to 512) was about 1.5 GB as BC. Players download this, so file size matters:
 a pack of the textures that make a visible difference is better than a pack of everything.
