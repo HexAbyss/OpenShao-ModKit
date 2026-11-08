@@ -18,6 +18,7 @@ import numpy as np
 from PIL import Image
 
 from ..pack import ostp
+from .. import fsutil
 from ..pack.reader import verify
 from . import bc
 from .extract import default_workers
@@ -256,6 +257,7 @@ def compile_folder(folder, out_path, workers=None, encoder=None, progress=None, 
             logo = None
     preload = [p if isinstance(p, str) else '%016x' % p for p in (preload or [])]
     preload = [p.lower() for p in preload]
+    info = ostp.clean_info(info)
     problems = ostp.validate_info(info)
     if problems:
         raise ValueError('pack information: ' + '; '.join(problems))
@@ -316,7 +318,7 @@ def compile_folder(folder, out_path, workers=None, encoder=None, progress=None, 
             raise ValueError('the pack does not verify, so it was not written: ' + '; '.join(result.verification.problems[:5]))
         result.textures = len(specs)
         result.size = os.path.getsize(candidate)
-        os.replace(candidate, out_path)
+        fsutil.replace(candidate, out_path)
     except _Cancelled:
         result.cancelled = True
     finally:

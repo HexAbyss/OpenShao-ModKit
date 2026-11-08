@@ -16,3 +16,4 @@ src/modkit/_native/*.dylib
 *.wad
 *.wa[d-z]
 tests/gui/out/
+OpenShao_ModKit.ini

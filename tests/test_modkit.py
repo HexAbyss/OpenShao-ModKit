@@ -523,6 +523,43 @@ class CompileTest(unittest.TestCase):
             for word in ('id must be', 'version must be', 'authors must be'):
                 self.assertIn(word, str(caught.exception))
 
+    def test_control_characters_the_game_refuses_are_cleaned_or_reported(self):
+        info = dict(id='i', name='a\tb\nc', version='1.0.0', authors=['x\ny'], summary='one\ntwo', min_recomp='0.4.1',
+                    description='p1\r\n\r\np2\tq', credits='a\rb', website='w\n')
+        self.assertTrue(ostp.control_problems(info))                    # the game would refuse this pack, so the check says so
+        cleaned = ostp.clean_info(info)
+        self.assertEqual(cleaned['name'], 'a b c')
+        self.assertEqual(cleaned['authors'], ['x y'])
+        self.assertEqual(cleaned['description'], 'p1\n\np2 q')         # paragraphs stay in the description and in the credits
+        self.assertEqual(cleaned['credits'], 'a\nb')
+        self.assertEqual(cleaned['website'], 'w')
+        self.assertEqual(ostp.control_problems(cleaned), [])
+        self.assertEqual(ostp.validate_info(cleaned), [])
+        self.assertTrue(any('name' in p for p in ostp.validate_info(dict(cleaned, name='a\nb'))))
+        self.assertTrue(any('description' in p for p in ostp.validate_info(dict(cleaned, description='a\tb'))))
+
+    def test_a_rename_refused_for_a_moment_is_tried_again(self):
+        from modkit import fsutil
+        real = os.replace
+        calls = []
+
+        def refuse_twice(source, target):
+            calls.append(1)
+            if len(calls) <= 2:
+                raise PermissionError(5, 'Access is denied')
+            real(source, target)
+
+        with tempfile.TemporaryDirectory() as t:
+            a, b = Path(t) / 'a', Path(t) / 'b'
+            a.write_text('x')
+            with mock.patch('os.replace', refuse_twice), mock.patch('time.sleep'):
+                fsutil.replace(a, b)
+            self.assertEqual((len(calls), b.read_text(), a.exists()), (3, 'x', False))
+            a.write_text('y')
+            with mock.patch('os.replace', side_effect=PermissionError(5, 'Access is denied')), mock.patch('time.sleep'):
+                with self.assertRaises(PermissionError):
+                    fsutil.replace(a, b, attempts=3)
+
     def test_init_writes_a_project_that_can_be_filled_in_once(self):
         with tempfile.TemporaryDirectory() as t:
             self.assertTrue(compilation.init_project(t).endswith('pack.json'))

@@ -9,7 +9,7 @@ import re
 import struct
 from dataclasses import dataclass, field
 
-from .ostp import BC1, BC3, ENTRY, HEADER, ID, MAGIC, MAX_LEVELS, MAX_LOGO, MAX_SIDE, REQUIRED, VERSION, level_size
+from .ostp import BC1, BC3, ENTRY, HEADER, ID, MAGIC, MAX_LEVELS, MAX_LOGO, MAX_SIDE, REQUIRED, VERSION, control_problems, level_size
 
 
 @dataclass
@@ -96,6 +96,8 @@ def verify(path):
             problem('the id is not letters, digits, - or _')
         if info.get('version') and not VERSION.match(str(info['version'])):
             problem('the version is not three numbers')
+        for text in control_problems(info):
+            problem('the metadata: ' + text)
         if info.get('texture_count') != count:
             problem('the metadata says %s textures, the header %d' % (info.get('texture_count'), count))
         for key in ('max_scale', 'texture_count'):

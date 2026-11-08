@@ -17,6 +17,7 @@ import numpy as np
 from PIL import Image
 
 from .compile import NAME, compile_folder, scan_folder
+from .. import fsutil
 from .signature import pixel_signature
 
 
@@ -125,7 +126,7 @@ class TextureFolder:
         target = self.file_path(t)
         temporary = target + '.part'
         picture.convert('RGBA').save(temporary, format='PNG')
-        os.replace(temporary, target)
+        fsutil.replace(temporary, target)
 
     # ---- what was edited ----
     def is_edited(self, texture):

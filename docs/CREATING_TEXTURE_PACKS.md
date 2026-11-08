@@ -117,7 +117,7 @@ Compiling turns the edited pictures into **one file**, `MyPack.ostp`. It is done
 | **Version** | three numbers, like `1.0.0`. Raise it when you publish a change |
 | **Authors** | names separated by commas |
 | **Summary** | one sentence, up to 200 characters |
-| **Description** | optional, up to 4,000 characters. The player reads it under **Details** on the Mods page |
+| **Description** | optional, up to 4,000 characters, and it may have paragraphs (press Enter). The player reads it under **Details** on the Mods page. In the other fields a line break or a tab is turned into a space when you compile, because the game refuses them |
 | **Credits** | optional, up to 4,000 characters: who made the pictures and where they come from. Also under **Details** |
 | **Website** | optional, a link to the pack (up to 256 characters). Also under **Details** |
 | **License** | optional, up to 128 characters, such as `CC BY 4.0`. Also under **Details** |

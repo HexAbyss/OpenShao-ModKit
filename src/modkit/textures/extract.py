@@ -16,6 +16,7 @@ import numpy as np
 from PIL import Image
 
 from ..xbox.archive import VOLUME, Archive, entry as archive_entry
+from .. import fsutil
 from ..xbox.ewdf import Decompressor, unpack_entry
 from ..xbox.source import GameSource
 from ..xbox.xpr import parse_xpr, to_rgba, xhash
@@ -61,7 +62,7 @@ def _save(out_dir, name, image):
         return
     temporary = '%s.%d.part' % (target, os.getpid())
     Image.fromarray(image, 'RGBA').save(temporary, format='PNG')
-    os.replace(temporary, target)
+    fsutil.replace(temporary, target)
 
 
 def _visit(buffer, path, found, stats):
@@ -210,6 +211,6 @@ def extract(source_path, out_dir, workers=None, limit=None, progress=None, cance
         temporary = os.path.join(out_dir, MANIFEST + '.part')
         with open(temporary, 'w') as f:
             json.dump(manifest, f)
-        os.replace(temporary, os.path.join(out_dir, MANIFEST))
+        fsutil.replace(temporary, os.path.join(out_dir, MANIFEST))
     result.seconds = time.time() - started
     return result
