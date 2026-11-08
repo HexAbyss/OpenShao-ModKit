@@ -24,8 +24,10 @@ SYSTEM = ('libX11.so', 'libXext.so', 'libXau.so', 'libXdmcp.so', 'libxcb.so', 'l
 a.binaries = [b for b in a.binaries if '/' in b[0] or not b[0].startswith(SYSTEM)]
 pyz = PYZ(a.pure)
 if sys.platform == 'win32':
-    # modkit.exe is the command line: a console, so a terminal waits for it and reads its output. The window is opened by OpenShao-ModKit.exe
-    # (native/launcher), which starts this one without a console and shows the splash screen while it unpacks.
-    exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='modkit', console=True, upx=False, icon=os.path.join(root, 'src', 'modkit', 'gui', 'app.ico'))
+    # A folder, dist\modkit\ (modkit.exe and its files): a one-file executable unpacks itself into %TEMP% at every start, which takes seconds. The folder
+    # is the command line (a console, so a terminal waits for it and reads its output). The window is opened by OpenShao-ModKit.exe (native/launcher),
+    # which carries the folder zipped, unpacks it once and starts it without a console, with a splash screen.
+    exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='modkit', console=True, upx=False, icon=os.path.join(root, 'src', 'modkit', 'gui', 'app.ico'))
+    COLLECT(exe, a.binaries, a.datas, name='modkit', upx=False)
 else:
     exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='modkit', console=True, upx=False)

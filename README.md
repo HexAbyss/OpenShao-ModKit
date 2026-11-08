@@ -47,10 +47,10 @@ glibc 2.28 or later, with no Python and nothing to install. It takes the command
 (`modkit gui`): Extract, Compile (pack information, logo, quality), Verify and About pages, with a brush circle as the progress of a long job.
 
 **The executables (Windows).** `packaging\windows\build.bat` (from an x64 Native Tools prompt for Visual Studio, with a Python that has PyInstaller, numpy,
-Pillow, unicorn and imgui-bundle) builds two files in `dist`. `OpenShao-ModKit.exe` (about 45 MB) is the one to give to people: a single file that needs no Python and nothing
-to install. It opens the window with no terminal and a splash screen. It carries the ModKit inside itself and, on the first run, unpacks it to
-`%LOCALAPPDATA%\OpenShao\ModKit` (checked against its SHA-256; older versions are removed). `modkit.exe` is that same ModKit alone, for the commands
-above in a terminal.
+Pillow, unicorn and imgui-bundle) builds `dist\OpenShao-ModKit.exe` and the folder `dist\modkit`. `OpenShao-ModKit.exe` (about 45 MB) is the one to give to people: a single file that
+needs no Python and nothing to install. It opens the window with no terminal and a splash screen. It carries the ModKit inside itself (zipped) and, on
+the first run, unpacks it with the `tar.exe` of Windows 10 and later to `%LOCALAPPDATA%\OpenShao\ModKit` (checked against its SHA-256; older versions
+are removed); after that the window opens in about a second. `dist\modkit\modkit.exe` is that same ModKit, for the commands above in a terminal.
 
 **From the source.** Python 3.9 or later with `numpy`, `Pillow` and `unicorn`, and the encoder library: `native/bc/build.sh` (a C++ compiler).
 `pip install -e .` installs the `modkit` command (`pip install -e .[gui]` adds the interface, which needs `imgui-bundle` and OpenGL); without installing, `PYTHONPATH=src python -m modkit ...` does the same. Without the library the

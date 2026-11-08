@@ -1,4 +1,4 @@
-"""Appends the ModKit to the launcher, so the launcher is one file: python embed_payload.py <launcher.exe> <modkit.exe> <out.exe>
+"""Appends the ModKit (the zipped folder, see zip_folder.py) to the launcher, so the launcher is one file: python embed_payload.py <launcher.exe> <modkit.zip> <out.exe>
 
 Layout of the result: the launcher, the ModKit, its SHA-256 (32 bytes), its size (8 bytes, little-endian) and the marker MKPAYLD1. The launcher reads
 the end of its own file (native/launcher/modkit_launcher.cpp, Prepare)."""

@@ -244,8 +244,8 @@ std::wstring Arguments() {
 
 
 
-// The ModKit is in this file, after the program: [modkit.exe][SHA-256, 32 bytes][its size, 8 bytes][MKPAYLD1]. On the first run it is written to
-// %LOCALAPPDATA%\OpenShao\ModKit\<start of the hash>\modkit.exe and checked against the hash; later runs use that copy. A build with no payload
+// The ModKit is in this file, after the program, as a zip of its folder: [zip][SHA-256, 32 bytes][its size, 8 bytes][MKPAYLD1]. On the first run it is unpacked to
+// %LOCALAPPDATA%\OpenShao\ModKit\<start of the hash>\ (the zip is checked against the hash first); later runs use that folder, which starts at once. A build with no payload
 // (a development build) uses a modkit.exe beside this file.
 constexpr size_t kTrailer = 48;
 
@@ -300,6 +300,39 @@ bool Extract(HANDLE self, uint64_t offset, uint64_t size, const uint8_t* expecte
     return ok;
 }
 
+// Deletes a folder and what is in it, as far as Windows allows (a file of a running program stays).
+void RemoveTree(const std::wstring& folder) {
+    WIN32_FIND_DATAW entry;
+    HANDLE find = FindFirstFileW((folder + L"\\*").c_str(), &entry);
+    if (find != INVALID_HANDLE_VALUE) {
+        do {
+            const std::wstring name = entry.cFileName;
+            if (name == L"." || name == L"..") continue;
+            const std::wstring path = folder + L"\\" + name;
+            if (entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) RemoveTree(path);
+            else { SetFileAttributesW(path.c_str(), FILE_ATTRIBUTE_NORMAL); DeleteFileW(path.c_str()); }
+        } while (FindNextFileW(find, &entry));
+        FindClose(find);
+    }
+    RemoveDirectoryW(folder.c_str());
+}
+
+// Unpacks a zip into a folder with the tar.exe that comes with Windows 10 and later; true when it succeeds.
+bool Untar(const std::wstring& zip, const std::wstring& folder) {
+    wchar_t system[MAX_PATH];
+    if (!GetSystemDirectoryW(system, MAX_PATH)) return false;
+    const std::wstring tar = std::wstring(system) + L"\\tar.exe";
+    std::wstring command = L"\"" + tar + L"\" -xf \"" + zip + L"\" -C \"" + folder + L"\"";
+    STARTUPINFOW startup = {sizeof(startup)};
+    PROCESS_INFORMATION process = {};
+    if (!CreateProcessW(tar.c_str(), &command[0], nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process)) return false;
+    WaitForSingleObject(process.hProcess, INFINITE);
+    DWORD code = 1;
+    GetExitCodeProcess(process.hProcess, &code);
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    return code == 0;
+}
 DWORD WINAPI Prepare(LPVOID parameter) {
     Prepared& result = *static_cast<Prepared*>(parameter);
     wchar_t path[MAX_PATH * 4];
@@ -315,9 +348,9 @@ DWORD WINAPI Prepare(LPVOID parameter) {
         embedded = std::memcmp(trailer + 40, "MKPAYLD1", 8) == 0;
     if (!embedded) {
         if (self != INVALID_HANDLE_VALUE) CloseHandle(self);
-        result.program = folder + L"modkit.exe";
+        result.program = folder + L"modkit\\modkit.exe";
         if (GetFileAttributesW(result.program.c_str()) == INVALID_FILE_ATTRIBUTES)
-            result.error = L"This copy of OpenShao-ModKit.exe has no ModKit inside and modkit.exe was not found beside it.";
+            result.error = L"This copy of OpenShao-ModKit.exe has no ModKit inside and the folder modkit was not found beside it.";
         result.done = true;
         return 0;
     }
@@ -331,17 +364,21 @@ DWORD WINAPI Prepare(LPVOID parameter) {
         const std::wstring root = n && n < MAX_PATH ? std::wstring(local) : folder;
         const std::wstring base = root + L"\\OpenShao", versions = base + L"\\ModKit";
         const std::wstring current = versions + L"\\" + Hex(trailer, 8), program = current + L"\\modkit.exe";
-        uint64_t have = 0;
-        if (!(FileSize(program, &have) && have == size)) {
-            const std::wstring temporary = current + L"\\modkit." + std::to_wstring(GetCurrentProcessId()) + L".tmp";
-            if (!MakeFolder(base) || !MakeFolder(versions) || !MakeFolder(current))
-                result.error = L"The ModKit could not be unpacked: the folder " + current + L" could not be created.";
-            else if (!Extract(self, uint64_t(total.QuadPart) - kTrailer - size, size, trailer, temporary))
-                result.error = L"The ModKit could not be unpacked to " + current + L". There may be no space left, or OpenShao-ModKit.exe is damaged.";
-            else if (!MoveFileExW(temporary.c_str(), program.c_str(), MOVEFILE_REPLACE_EXISTING)) {
-                if (!(FileSize(program, &have) && have == size)) result.error = L"The ModKit could not be unpacked to " + current + L".";  // another run may have won
-                DeleteFileW(temporary.c_str());
-            }
+        // a folder is unpacked beside its final place and renamed, so a folder with modkit.exe in it is always a complete one
+        if (GetFileAttributesW(program.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            const std::wstring stem = versions + L"\\unpack-" + std::to_wstring(GetCurrentProcessId());
+            const std::wstring zip = stem + L".zip", part = stem;
+            RemoveTree(part);
+            if (!MakeFolder(base) || !MakeFolder(versions) || !MakeFolder(part))
+                result.error = L"The ModKit could not be unpacked: the folder " + versions + L" could not be created.";
+            else if (!Extract(self, uint64_t(total.QuadPart) - kTrailer - size, size, trailer, zip))
+                result.error = L"The ModKit could not be unpacked to " + versions + L". There may be no space left, or OpenShao-ModKit.exe is damaged.";
+            else if (!Untar(zip, part))
+                result.error = L"The ModKit could not be unpacked: tar.exe, which comes with Windows 10 and later, failed or is missing.";
+            else if (!MoveFileExW(part.c_str(), current.c_str(), 0) && GetFileAttributesW(program.c_str()) == INVALID_FILE_ATTRIBUTES)
+                result.error = L"The ModKit could not be unpacked to " + current + L".";  // if another run won the rename, its folder is used
+            DeleteFileW(zip.c_str());
+            RemoveTree(part);
         }
         if (result.error.empty()) {
             result.program = program;
@@ -350,15 +387,15 @@ DWORD WINAPI Prepare(LPVOID parameter) {
             if (find != INVALID_HANDLE_VALUE) {
                 do {
                     const std::wstring name = entry.cFileName;
-                    if (name == L"." || name == L".." || !(entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || versions + L"\\" + name == current) continue;
-                    DeleteFileW((versions + L"\\" + name + L"\\modkit.exe").c_str());
-                    RemoveDirectoryW((versions + L"\\" + name).c_str());
+                    if (name == L"." || name == L".." || !(entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || versions + L"\\" + name == current ||
+                        name.compare(0, 7, L"unpack-") == 0)
+                        continue;
+                    RemoveTree(versions + L"\\" + name);
                 } while (FindNextFileW(find, &entry));
                 FindClose(find);
             }
         }
-    }
-    CloseHandle(self);
+    }    CloseHandle(self);
     result.done = true;
     return 0;
 }
