@@ -3,7 +3,10 @@
 Extracts the textures of Mortal Kombat: Shaolin Monks from your own copy of the game and compiles edited pictures into a texture pack (`.ostp`)
 that [OpenShao](https://github.com/OAleex/OpenShao) installs from its Mods page. It reads the game and stores nothing of it.
 
-![The Extract page of the ModKit](docs/images/window-extract.png)
+| Extracting the game's textures | Compiling a pack |
+| --- | --- |
+| ![The Extract page while it writes the game's textures](docs/images/extract-progress.gif) | ![The Compile page while it builds a pack](docs/images/compile-progress.gif) |
+| *The Extract page reads the game from your own copy and writes each texture as a PNG picture.* | *The Compile page stores only the pictures you edited, each with all its mip levels.* |
 
 ## The flow
 
@@ -36,6 +39,10 @@ Each download holds the program, a `readme.txt` and a `licenses` folder.
 
 The first run unpacks the ModKit into your user data folder (`%LOCALAPPDATA%\OpenShao\ModKit` or `~/.local/share/OpenShao/ModKit`); the window opens in about a
 second after that. To build it yourself, or to run it from the source, see [docs/BUILDING.md](docs/BUILDING.md).
+
+<img src="docs/images/splash.gif" alt="The start screen shown while the ModKit starts" width="300">
+
+*The start screen, shown until the window is up.*
 
 ## Commands
 
