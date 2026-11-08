@@ -30,6 +30,13 @@ Other guides: [what the game's textures are](TEXTURES.md), [when something goes 
 The ModKit has a window (open `modkit` with no command) and a command line (`modkit extract`, `modkit compile`, ...); both do the same work. This
 guide shows the window first and the command beside it.
 
+**Opening it on Windows for the first time.** `OpenShao-ModKit.exe` is not signed with a paid code-signing certificate, so Windows SmartScreen
+("Windows protected your PC") can stop it the first time: it blocks programs that are new and have no signature, and that says nothing about
+this one being unsafe. Click **More info**, then **Run anyway**. You do this once. If there is no "Run anyway" (Smart App Control is on), right-click
+the file, choose **Properties**, tick **Unblock** and press **OK**, or run `Unblock-File .\OpenShao-ModKit.exe` in PowerShell. The program is free
+software and the source is public, so you can build it yourself with `packaging\windows\build.bat`. It reads your game and writes only the folders
+you choose and `%LOCALAPPDATA%\OpenShao\ModKit`, where it unpacks itself.
+
 ## 1. Extract the game's textures
 
 **Window:** open the **Extract** page, **Choose** the game's disc image (`.iso`) and an empty folder for the pictures, and press **Extract**.

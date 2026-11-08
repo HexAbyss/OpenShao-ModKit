@@ -52,6 +52,9 @@ needs no Python and nothing to install. It opens the window with no terminal and
 the first run, unpacks it with the `tar.exe` of Windows 10 and later to `%LOCALAPPDATA%\OpenShao\ModKit` (checked against its SHA-256; older versions
 are removed); after that the window opens in about a second. `dist\modkit\modkit.exe` is that same ModKit, for the commands above in a terminal.
 
+**Windows warning on the first run.** `OpenShao-ModKit.exe` is not signed (a code-signing certificate costs money every year), so SmartScreen
+can stop it once with "Windows protected your PC": click **More info** and **Run anyway**. See [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) if there is no such button.
+
 **From the source.** Python 3.9 or later with `numpy`, `Pillow` and `unicorn`, and the encoder library: `native/bc/build.sh` (a C++ compiler).
 `pip install -e .` installs the `modkit` command (`pip install -e .[gui]` adds the interface, which needs `imgui-bundle` and OpenGL); without installing, `PYTHONPATH=src python -m modkit ...` does the same. Without the library the
 default encoder falls back to Pillow's and says so (it makes visible errors in soft transparency); an encoder asked for by name (`--encoder`,
