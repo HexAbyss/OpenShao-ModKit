@@ -14,7 +14,7 @@ The examples in [`examples/`](../examples) are complete scripts: `upscale_small_
 ```python
 import modkit
 
-modkit.extract('game.iso', 'textures')                  # 3,333 PNG and a manifest.json; about 3 minutes on six cores
+modkit.extract('game.iso', 'textures')                  # 3,333 PNG in subfolders and a manifest.json; about 3 minutes on six cores
 folder = modkit.TextureFolder('textures')
 
 for texture in folder.find(format='DXT5', max_width=128):
@@ -35,7 +35,7 @@ Scripts that call `extract`, `compile` or `TextureFolder.edited` start worker pr
 | Name | What it does |
 | --- | --- |
 | `modkit.check_game(path)` | The files an ISO or game folder lacks (an empty list when complete). |
-| `modkit.extract(game, folder, workers=None, limit=None, progress=None, cancel=None)` | Writes the PNG and `manifest.json`. `progress(done, total, textures)`; `cancel()` returning true stops it and leaves no manifest. Returns an `ExtractResult` (`textures`, `entries`, `stats`, `cancelled`, `seconds`). |
+| `modkit.extract(game, folder, workers=None, limit=None, progress=None, cancel=None, flat=False)` | Writes the PNG, in subfolders by where the game uses them (all at the top level with `flat=True`), and `manifest.json`. `progress(done, total, textures)`; `cancel()` returning true stops it and leaves no manifest. Returns an `ExtractResult` (`textures`, `entries`, `stats`, `cancelled`, `seconds`). |
 | `modkit.TextureFolder(path)` | A folder as `extract` leaves it. Iterating gives its `Texture` objects, by hash. |
 | `.get(h)`, `h in folder`, `len(folder)` | A texture by hash (integer, 16 hexadecimal digits or a `Texture`); `KeyError` if absent. |
 | `.find(format=None, min_width=0, max_width=None, min_height=0, max_height=None, where=None)` | Textures by original size, game format (`DXT5`, `A8R8G8B8`) and your own `where(texture)`. |

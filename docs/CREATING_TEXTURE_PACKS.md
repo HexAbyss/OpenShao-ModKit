@@ -46,7 +46,9 @@ of the image.
 
 You get, in the folder:
 
-- **3,333 PNG pictures**, one for each distinct texture in the game, named `<hash>_<format>_<width>x<height>.png`, for example
+- **3,333 PNG pictures**, one for each distinct texture in the game, grouped in subfolders by where the game uses it (`Levels/Room 012`, `Levels/Front end (room 0)`,
+  `Characters/Character 007`, `Common`, `Other`, and `Shared` for a texture used in more than one place; `modkit extract --flat` writes them all at the
+  top level instead), named `<hash>_<format>_<width>x<height>.png`, for example
   `0bac2904604d3ecc_DXT5_256x256.png`. The **hash** is the name OpenShao knows the texture by: **do not rename the files**.
 - **`manifest.json`**, which says what each texture is, where it occurs in the game, and holds a signature of its pixels. This is how the tools know
   which pictures you changed. **Keep it in the folder.**

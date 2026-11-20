@@ -40,7 +40,7 @@ def command_extract(args):
         return cancelled[0]
 
     try:
-        result = extract(args.game, args.out, workers=args.workers, limit=args.limit, progress=progress, cancel=cancel)
+        result = extract(args.game, args.out, workers=args.workers, limit=args.limit, progress=progress, cancel=cancel, flat=args.flat)
     except KeyboardInterrupt:
         print('\ncancelled')
         return 130
@@ -50,6 +50,8 @@ def command_extract(args):
     print()
     print('%d textures from %d archive entries in %s with %d workers%s' %
           (result.textures, result.entries, _clock(result.seconds), result.workers, ' (cancelled)' if result.cancelled else ''))
+    if result.folders:
+        print('subfolders:', ', '.join('%s %d' % kv for kv in result.folders.items()))
     if result.stats:
         print('details:', ', '.join('%s %d' % kv for kv in sorted(result.stats.items())))
     failed = result.stats.get('ewdf_fail', 0) + result.stats.get('decode_fail', 0) + result.stats.get('pwf_bad', 0)
@@ -167,6 +169,7 @@ def main(argv=None):
     e.add_argument('game'); e.add_argument('out')
     e.add_argument('--workers', type=int, help='processes to use (default: the cores, up to 8)')
     e.add_argument('--limit', type=int, help='look only at the first N archive entries (for tests)')
+    e.add_argument('--flat', action='store_true', help='write every picture at the top level of the folder, with no subfolders')
     e.set_defaults(run=command_extract)
     c = sub.add_parser('check', help='say whether the game has every file the tool needs')
     c.add_argument('game')

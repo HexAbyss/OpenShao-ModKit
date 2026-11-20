@@ -12,8 +12,9 @@ that [OpenShao](https://github.com/OAleex/OpenShao) installs from its Mods page.
 
 1. **Extract** the game's textures to a folder of PNG pictures: `modkit extract <game> <folder>`.
    `<game>` is the disc image (`.iso`) or a folder with `default.xbe` and the `GAMEDATA.WAD` to `GAMEDATA.WAK` files.
-   It takes about 3 minutes on six cores, and writes 3,333 PNG files named `<hash>_<format>_<width>x<height>.png` and a `manifest.json` with the
-   place of each texture in the game and a signature of its pixels.
+   It takes about 3 minutes on six cores, and writes 3,333 PNG files named `<hash>_<format>_<width>x<height>.png`, grouped in subfolders by where the game uses
+   each texture (`Levels/Room 012`, `Levels/Front end (room 0)`, `Characters/Character 007`, `Common`, `Other`, and `Shared` for a texture used in more than one place),
+   and a `manifest.json` with the place of each texture in the game and a signature of its pixels. `--flat` writes every picture at the top level instead.
 2. **Edit** the pictures in place, with any program. A picture may be larger than the original (2x, 4x) in the same proportion, with both sides a multiple of 4.
    The pictures may stay directly in the folder or be moved into subfolders, as many levels deep as you like, to group them your way. Where a picture sits does not matter:
    the ModKit finds it by its name. If the same hash appears twice, identical pictures use the first path in sorted order and different pictures are refused, with both paths named.

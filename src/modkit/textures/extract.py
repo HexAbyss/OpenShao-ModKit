@@ -20,6 +20,7 @@ from .. import fsutil
 from ..xbox.ewdf import Decompressor, unpack_entry
 from ..xbox.source import GameSource
 from ..xbox.xpr import parse_xpr, to_rgba, xhash
+from .layout import organize
 from .signature import pixel_signature
 
 MANIFEST = 'manifest.json'
@@ -34,6 +35,7 @@ class ExtractResult:
     cancelled: bool = False
     seconds: float = 0.0
     workers: int = 1
+    folders: dict = field(default_factory=dict)   # pictures per subfolder, when the extraction was organized
 
 
 _state = None  # what a worker process keeps between chunks
@@ -137,8 +139,8 @@ def default_workers():
     return max(1, min(os.cpu_count() or 1, 8))
 
 
-def extract(source_path, out_dir, workers=None, limit=None, progress=None, cancel=None):
-    """Extracts into `out_dir`. `progress(entries_done, entries_total, textures_so_far)` is called as chunks finish;
+def extract(source_path, out_dir, workers=None, limit=None, progress=None, cancel=None, flat=False):
+    """Extracts into `out_dir`, into subfolders by where the game uses each texture (layout.py), or all at the top level with `flat`. `progress(entries_done, entries_total, textures_so_far)` is called as chunks finish;
     `cancel()` returning true stops it (the pictures already written stay, and no manifest is written). `limit` looks only at the
     first entries of the archive, for tests."""
     started = time.time()
@@ -212,5 +214,11 @@ def extract(source_path, out_dir, workers=None, limit=None, progress=None, cance
         with open(temporary, 'w') as f:
             json.dump(manifest, f)
         fsutil.replace(temporary, os.path.join(out_dir, MANIFEST))
+        if not flat:
+            source = GameSource(source_path)
+            try:
+                result.folders = organize(out_dir, manifest, source.default_xbe())
+            finally:
+                source.close()
     result.seconds = time.time() - started
     return result

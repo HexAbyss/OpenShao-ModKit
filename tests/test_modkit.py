@@ -22,6 +22,7 @@ from modkit.pack.reader import verify
 from modkit.textures import bc
 from modkit.textures import compile as compilation
 from modkit.textures import extract as extraction
+from modkit.textures import layout
 from modkit.textures.folder import TextureFolder
 from modkit.textures.signature import pixel_signature
 from modkit.xbox import ewdf
@@ -319,7 +320,7 @@ class ExtractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             game, out = self.build(Path(t)), Path(t) / 'out'
             calls = []
-            result = extraction.extract(game, out, workers=1, progress=lambda *a: calls.append(a))
+            result = extraction.extract(game, out, workers=1, progress=lambda *a: calls.append(a), flat=True)
             self.assertEqual((result.textures, result.cancelled), (3, False))
             manifest = json.loads((out / 'manifest.json').read_text())
             self.assertEqual(len(manifest), 3)
@@ -340,8 +341,8 @@ class ExtractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             game = self.build(Path(t))
             one, many = Path(t) / 'one', Path(t) / 'many'
-            extraction.extract(game, one, workers=1)
-            result = extraction.extract(game, many, workers=2)
+            extraction.extract(game, one, workers=1, flat=True)
+            result = extraction.extract(game, many, workers=2, flat=True)
             self.assertEqual(result.textures, 3)
             self.assertEqual((one / 'manifest.json').read_text(), (many / 'manifest.json').read_text())
             for f in os.listdir(one):
@@ -429,6 +430,93 @@ def decode_bc1(data, w, h):
             out[by + i // 4, bx + i % 4, :3] = palette[(bits >> (2 * i)) & 3]
             out[by + i // 4, bx + i % 4, 3] = 255
     return out
+
+
+def fake_xbe(rows):
+    """A minimal executable with one section holding the character table: `rows` is {index: list of 12 dwords}; the others are zero"""
+    base, table = 0x10000, layout.CHARACTER_TABLE
+    data = bytearray(0x3000)
+    data[:4] = b'XBEH'
+    struct.pack_into('<I', data, 0x104, base)
+    struct.pack_into('<II', data, 0x11C, 1, base + 0x200)
+    struct.pack_into('<IIIII', data, 0x200, 0, table // 0x1000 * 0x1000, 0x2000, 0x1000, 0x2000)
+    struct.pack_into('<I', data, 0x200 + 20, base + 0x300)
+    data[0x300:0x306] = b'.data\0'
+    for k in range(layout.CHARACTER_COUNT):
+        row = rows.get(k, [layout.CHARACTER_FIRST_TYPE + k] + [0] * 11)
+        struct.pack_into('<12I', data, 0x1000 + (table % 0x1000) + k * layout.CHARACTER_STRIDE, *row)
+    return bytes(data)
+
+
+def character_row(k, **fields):
+    row = [layout.CHARACTER_FIRST_TYPE + k, 1, 1] + [0] * 9
+    for position, record in fields.items():
+        row[int(position[1:])] = record + layout.GAME_ID_OFFSET
+    return row
+
+
+class LayoutTest(unittest.TestCase):
+    def owners(self):
+        return layout.character_records(fake_xbe({0: character_row(0, d3=1000, d4=1001, d7=2000, d9=3000),
+                                                  1: character_row(1, d3=1100, d7=2100, d9=3000)}))
+
+    def test_the_character_table_gives_the_records_of_each_character(self):
+        owners = self.owners()
+        self.assertEqual(owners[1000], [0])
+        self.assertEqual(owners[1100], [1])
+        self.assertEqual([owners[r] for r in (2000, 2011, 2100)], [[0], [0], [1]], 'a group is twelve records from the base')
+        self.assertNotIn(2012, owners)
+        self.assertEqual(owners[3000], [0, 1], 'a record two characters point at has both')
+
+    def test_an_executable_without_the_table_gives_no_characters(self):
+        self.assertEqual(layout.character_records(fake_xbe({0: [7] + [0] * 11})), {})
+        self.assertEqual(layout.character_records(b'not an executable'), {})
+        self.assertEqual(layout.character_records(bytes(0x3000)), {})
+
+    def test_each_place_gives_a_context_and_the_contexts_give_the_folder(self):
+        owners = self.owners()
+        folder = lambda *records: layout.folder_for(layout.contexts([[r, 0, 0] for r in records], owners))
+        self.assertEqual(folder(901 + 20 * 12 + 1), 'Levels/Room 012')
+        self.assertEqual(folder(905), 'Levels/Front end (room 0)')
+        self.assertEqual(folder(1000, 1001), 'Characters/Character 000')
+        self.assertEqual(folder(1100), 'Characters/Character 001')
+        self.assertEqual(folder(300, 500), 'Common', 'several common places are still one context')
+        self.assertEqual(folder(7000), 'Other')
+        self.assertEqual(folder(921, 1301), 'Shared/Between levels')
+        self.assertEqual(folder(3000), 'Shared/Between characters')
+        self.assertEqual(folder(300, 921), 'Shared/Mixed')
+        self.assertEqual(folder(1000, 921), 'Shared/Mixed')
+
+    def test_organize_moves_the_pictures_and_keeps_the_manifest_names(self):
+        with tempfile.TemporaryDirectory() as t:
+            out = Path(t)
+            manifest = {'%016x' % (0xA0 + i): dict(file='%016x_DXT5_4x4.png' % (0xA0 + i), at=[[r, 0, 0]]) for i, r in enumerate((300, 921, 1000))}
+            for record in manifest.values():
+                (out / record['file']).write_bytes(b'png')
+            counts = layout.organize(out, manifest, fake_xbe({0: character_row(0, d3=1000)}))
+            self.assertEqual(counts, {'Characters/Character 000': 1, 'Common': 1, 'Levels/Room 001': 1})
+            self.assertEqual(sorted(p.relative_to(out).as_posix() for p in out.rglob('*.png')),
+                             sorted(['Common/%016x_DXT5_4x4.png' % 0xA0, 'Levels/Room 001/%016x_DXT5_4x4.png' % 0xA1,
+                                     'Characters/Character 000/%016x_DXT5_4x4.png' % 0xA2]))
+            self.assertEqual([f for f in os.listdir(out) if f.endswith('.png')], [], 'nothing is left at the top level')
+
+
+class ExtractLayoutTest(unittest.TestCase):
+    def test_extraction_is_organized_unless_flat(self):
+        with tempfile.TemporaryDirectory() as t:
+            game = ExtractTest().build(Path(t))
+            out = Path(t) / 'out'
+            result = extraction.extract(game, out, workers=1)
+            self.assertEqual(result.folders, {'Common': 3})
+            self.assertEqual([f for f in os.listdir(out) if f.endswith('.png')], [])
+            manifest = json.loads((out / 'manifest.json').read_text())
+            for record in manifest.values():
+                self.assertEqual(record['file'], os.path.basename(record['file']), 'the manifest keeps plain names')
+                self.assertTrue((out / 'Common' / record['file']).is_file())
+            self.assertEqual(len(TextureFolder(out)), 3, 'the folder class finds the pictures in the subfolders')
+            flat = Path(t) / 'flat'
+            self.assertEqual(extraction.extract(game, flat, workers=1, flat=True).folders, {})
+            self.assertEqual(len([f for f in os.listdir(flat) if f.endswith('.png')]), 3)
 
 
 class CompileTest(unittest.TestCase):
