@@ -12,7 +12,7 @@ The public interface, for scripts (importing it is cheap: the parts load when fi
     modkit.pack_entries('pack.ostp')              # what a pack holds
 
 Every function raises ValueError, with the reason in words, for what the user can fix (a missing file, an unusable picture)."""
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 _EXPORTS = {
     'extract': ('.textures.extract', 'extract'),
