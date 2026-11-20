@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from PIL import Image
 
-from .compile import NAME, compile_folder, scan_folder
+from .compile import NAME, compile_folder, list_pictures, scan_folder
 from .. import fsutil
 from .signature import pixel_signature
 
@@ -24,7 +24,7 @@ from .signature import pixel_signature
 @dataclass
 class Texture:
     hash: int
-    file: str                  # the picture's file name in the folder
+    file: str                  # the picture's path in the folder, with '/' between subfolders
     format: str = ''           # the game's format (DXT5, A8R8G8B8): informative
     width: int = 0             # the original size, as the game has it
     height: int = 0
@@ -53,16 +53,25 @@ class TextureFolder:
                     records, self.has_manifest = loaded, True
             except (ValueError, OSError):
                 pass
+        pictures = list_pictures(self.path)                  # the pictures may sit in subfolders; where one sits does not matter
+        by_name, by_hash = {}, {}
+        for rel, _ in pictures:
+            name = rel.rsplit('/', 1)[-1]
+            match = NAME.match(name)
+            by_name.setdefault(name.lower(), rel)
+            if match:
+                by_hash.setdefault(int(match.group(1), 16), rel)
         for key, record in records.items():
             if isinstance(record, dict) and re.fullmatch(r'[0-9a-fA-F]{16}', key) and isinstance(record.get('file'), str):
                 h = int(key, 16)
-                self.textures[h] = Texture(h, record['file'], str(record.get('fmt', '')), int(record.get('w', 0)), int(record.get('h', 0)),
+                where = by_name.get(record['file'].lower()) or by_hash.get(h) or record['file']
+                self.textures[h] = Texture(h, where, str(record.get('fmt', '')), int(record.get('w', 0)), int(record.get('h', 0)),
                                            list(record.get('at', [])), record.get('pixels') if isinstance(record.get('pixels'), str) else None)
-        for file in sorted(os.listdir(self.path)):  # pictures the manifest does not list still count
-            match = NAME.match(file)
+        for rel, _ in pictures:  # pictures the manifest does not list still count
+            match = NAME.match(rel.rsplit('/', 1)[-1])
             if match and int(match.group(1), 16) not in self.textures:
                 h = int(match.group(1), 16)
-                self.textures[h] = Texture(h, file, match.group(2), int(match.group(3)), int(match.group(4)))
+                self.textures[h] = Texture(h, rel, match.group(2), int(match.group(3)), int(match.group(4)))
 
     # ---- looking things up ----
     def __len__(self):
@@ -106,7 +115,7 @@ class TextureFolder:
 
     # ---- reading and writing pictures ----
     def file_path(self, texture):
-        return os.path.join(self.path, self.get(texture).file)
+        return os.path.join(self.path, *self.get(texture).file.split('/'))
 
     def image(self, texture):
         """The picture as a PIL image in RGBA"""
