@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openshao-modkit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Extract the textures of Mortal Kombat: Shaolin Monks from your own copy and compile edited pictures into OpenShao texture packs (.ostp)."
 readme = "README.md"
 classifiers = ["License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)"]
