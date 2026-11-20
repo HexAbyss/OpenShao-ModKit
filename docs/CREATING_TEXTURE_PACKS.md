@@ -53,6 +53,10 @@ You get, in the folder:
 
 Extract once; you can come back to the same folder as often as you like, and copy it as a backup before a big batch of edits.
 
+You can also move the pictures into subfolders, as deep as you like, to group them your way (by level, by character, by menu). Keep the file names: the tools
+find each picture by its name, wherever it sits, and `manifest.json` stays valid. If the same hash appears in two places, identical pictures use the first path in
+sorted order, and different pictures are refused with both paths named.
+
 ## 2. Edit the pictures
 
 Edit the PNG files **in place**, with any program. Only the pictures you change go into your pack. A picture you do not touch stays as the game has it.
@@ -91,7 +95,7 @@ You do not need to build anything to see your pictures in the game.
 2. On the Developer page, **Choose** your texture folder (the extraction folder with your edits).
 3. **Play.** Restart the game to see a new change.
 
-The game reads your folder as it starts and uses **only the pictures whose pixels changed**: a single changed pixel is enough, and a picture saved
+The game reads your folder, subfolders included, as it starts and uses **only the pictures whose pixels changed**: a single changed pixel is enough, and a picture saved
 again with the same pixels is not counted. The developer folder is read before any installed texture pack, so you always see what you are editing.
 The launcher's Developer page says how many pictures it found, and the game's log says how many it uses.
 

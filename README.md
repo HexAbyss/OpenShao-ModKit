@@ -15,7 +15,9 @@ that [OpenShao](https://github.com/OAleex/OpenShao) installs from its Mods page.
    It takes about 3 minutes on six cores, and writes 3,333 PNG files named `<hash>_<format>_<width>x<height>.png` and a `manifest.json` with the
    place of each texture in the game and a signature of its pixels.
 2. **Edit** the pictures in place, with any program. A picture may be larger than the original (2x, 4x) in the same proportion, with both sides a multiple of 4.
-3. **Try them in the game** without building anything: turn on Developer on OpenShao's Files page and choose the folder. Only pictures you changed count.
+   The pictures may stay directly in the folder or be moved into subfolders, as many levels deep as you like, to group them your way. Where a picture sits does not matter:
+   the ModKit finds it by its name. If the same hash appears twice, identical pictures use the first path in sorted order and different pictures are refused, with both paths named.
+3. **Try them in the game** without building anything: turn on Developer on OpenShao's Files page and choose the folder (subfolders included). Only pictures you changed count.
 4. **Compile**: `modkit init <folder>` writes a `pack.json` to fill in (id, name, version, authors, summary, and optionally description, credits, license and
    website). `logo.png` (up to 256 x 256) and `preload.txt` (the hashes of the textures the menus and the first picture draw, one per line) go beside it.
    Then `modkit compile <folder> <pack.ostp>` stores only the edited pictures, each with all its mip levels, as BC1 (no transparency) or BC3 (transparency).

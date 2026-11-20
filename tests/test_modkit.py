@@ -22,6 +22,7 @@ from modkit.pack.reader import verify
 from modkit.textures import bc
 from modkit.textures import compile as compilation
 from modkit.textures import extract as extraction
+from modkit.textures.folder import TextureFolder
 from modkit.textures.signature import pixel_signature
 from modkit.xbox import ewdf
 from modkit.xbox.archive import Archive, entry
@@ -575,6 +576,70 @@ class CompileTest(unittest.TestCase):
             (folder / 'manifest.json').write_text(json.dumps(manifest))
             scan = compilation.scan_folder(folder, workers=1)
             self.assertEqual(([p.hash for p in scan.pictures], scan.unsigned), ([0x1002], 1))
+
+
+class NestedFolderTest(unittest.TestCase):
+    """Pictures may sit in subfolders of the texture folder; where one sits does not matter"""
+
+    @staticmethod
+    def nest(folder):
+        for i, picture in enumerate(sorted(folder.glob('*.png'))):
+            if picture.name != 'logo.png':
+                target = folder / ('group%d' % (i % 2)) / 'inner'
+                target.mkdir(parents=True, exist_ok=True)
+                picture.rename(target / picture.name)
+
+    def build(self, t):
+        folder = texture_folder(Path(t) / 'textures')
+        write_project(folder)
+        return folder
+
+    def test_subfolders_give_the_same_pack_as_a_flat_folder(self):
+        with tempfile.TemporaryDirectory() as t:
+            folder = self.build(t)
+            flat, nested = Path(t) / 'flat.ostp', Path(t) / 'nested.ostp'
+            compilation.compile_folder(folder, flat, workers=1, encoder='rgbcx:2')
+            self.nest(folder)
+            result = compilation.compile_folder(folder, nested, workers=1, encoder='rgbcx:2')
+            self.assertEqual((result.textures, result.scan.unchanged, result.scan.files), (3, 1, 4))
+            self.assertEqual(flat.read_bytes(), nested.read_bytes())
+
+    def test_the_folder_class_reads_and_saves_in_the_subfolder_where_a_picture_is(self):
+        with tempfile.TemporaryDirectory() as t:
+            folder = self.build(t)
+            self.nest(folder)
+            textures = TextureFolder(folder)
+            self.assertEqual(len(textures), 4)
+            texture = textures.get(0x1003)
+            self.assertIn('/', texture.file)
+            self.assertFalse(textures.is_edited(texture))
+            picture = textures.array(texture).copy()
+            picture[0, 0, 1] ^= 0x20
+            textures.save(texture, picture)
+            self.assertTrue((folder / Path(*texture.file.split('/'))).is_file())
+            self.assertTrue(textures.is_edited(texture))
+            self.assertEqual(sorted(p.hash for p in textures.edited(workers=1)), [0x1000, 0x1001, 0x1002, 0x1003])
+
+    def test_the_same_picture_twice_uses_the_first_path_and_different_pictures_are_refused(self):
+        with tempfile.TemporaryDirectory() as t:
+            folder = self.build(t)
+            self.nest(folder)
+            name = '%016x_DXT5_8x8.png' % 0x1002
+            original = next(folder.rglob(name))
+            copy = folder / 'zcopy' / name
+            copy.parent.mkdir()
+            shutil.copy(original, copy)
+            scan = compilation.scan_folder(folder, workers=1)
+            self.assertEqual([p.hash for p in scan.pictures], [0x1000, 0x1001, 0x1002])
+            self.assertEqual([(a, b) for a, b in scan.duplicates], [('zcopy/' + name, original.relative_to(folder).as_posix())])
+            self.assertEqual(scan.refused, [])
+            other = np.asarray(Image.open(copy).convert('RGBA')).copy()
+            other[1, 1, 2] ^= 0x10
+            Image.fromarray(other, 'RGBA').save(copy)
+            scan = compilation.scan_folder(folder, workers=1)
+            self.assertEqual(sorted(f for f, why in scan.refused), sorted([original.relative_to(folder).as_posix(), 'zcopy/' + name]))
+            self.assertEqual(scan.duplicates, [])
+            self.assertEqual([p.hash for p in scan.pictures], [0x1000, 0x1001])
 
 
 class EncoderTest(unittest.TestCase):
