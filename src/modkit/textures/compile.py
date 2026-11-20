@@ -1,6 +1,6 @@
 """Compiles a folder of texture pictures into a texture pack (.ostp).
 
-The folder is the one the extraction wrote: PNG files named <hash>_<format>_<width>x<height>.png and a manifest.json
+The folder is the one the extraction wrote: PNG files named <hash>_<format>_<width>x<height>.png, directly in it or in subfolders, and a manifest.json
 with the signature of each picture's pixels. Only the pictures whose pixels differ from their signature go into the pack, the same rule the
 game's developer mode uses. Each is stored with all its mip levels as BC1 (no transparency) or BC3 (transparency), encoded with rgbcx at
 its highest level; the work is spread over several processes.
@@ -77,6 +77,17 @@ def _set_signatures(signatures):
     _signatures = signatures
 
 
+def list_pictures(folder):
+    """Every .png file under the folder, subfolders included, as (path relative to the folder with '/', full path), in sorted order of the relative path"""
+    found = []
+    for root, _, files in os.walk(folder):
+        for file in files:
+            if file.lower().endswith('.png'):
+                full = os.path.join(root, file)
+                found.append((os.path.relpath(full, folder).replace(os.sep, '/'), full))
+    return sorted(found)
+
+
 def _look(item):
     """Decodes one picture: (file, edited / unchanged / refused, details)"""
     file, path, name = item
@@ -91,9 +102,10 @@ def _look(item):
     if w * oh != h * ow:
         return file, 'refused', 'is %dx%d, not in the proportion of the original %dx%d' % (w, h, ow, oh)
     signature = _signatures.get(key)
-    if signature is not None and pixel_signature(rgba) == signature:
+    current = pixel_signature(rgba)
+    if signature is not None and current == signature:
         return file, 'unchanged', None
-    return file, 'edited', (key, w, h, ow, oh, bool((rgba[..., 3] < 255).any()), signature is not None)
+    return file, 'edited', (key, w, h, ow, oh, bool((rgba[..., 3] < 255).any()), signature is not None, current)
 
 
 def scan_folder(folder, workers=None):
@@ -116,15 +128,12 @@ def scan_folder(folder, workers=None):
     else:
         scan.manifest_problem = 'the folder has no manifest.json'
     items = []
-    for file in sorted(os.listdir(folder)):
-        if not os.path.isfile(os.path.join(folder, file)):
-            continue
-        match = NAME.match(file)
+    for file, full in list_pictures(folder):
+        match = NAME.match(file.rsplit('/', 1)[-1])
         if not match:
-            if file.lower().endswith('.png'):
-                scan.ignored.append(file)
+            scan.ignored.append(file)
             continue
-        items.append((file, os.path.join(folder, file), match.groups()))
+        items.append((file, full, match.groups()))
     scan.files = len(items)
     workers = workers or default_workers()
     if workers == 1 or len(items) < 8:
@@ -134,7 +143,7 @@ def scan_folder(folder, workers=None):
         context = multiprocessing.get_context('spawn')
         with context.Pool(workers, initializer=_set_signatures, initargs=(signatures,)) as pool:
             outcomes = pool.map(_look, items, chunksize=16)
-    seen = {}
+    seen, clashing = {}, set()
     paths = {file: path for file, path, _ in items}
     for file, kind, details in outcomes:
         if kind == 'refused':
@@ -142,11 +151,19 @@ def scan_folder(folder, workers=None):
         elif kind == 'unchanged':
             scan.unchanged += 1
         else:
-            key, w, h, ow, oh, alpha, signed = details
+            key, w, h, ow, oh, alpha, signed, current = details
             if key in seen:
-                scan.duplicates.append((file, seen[key]))
+                first, first_pixels = seen[key]
+                if current == first_pixels and key not in clashing:
+                    scan.duplicates.append((file, first))                 # the same pixels twice: the first path is used
+                else:
+                    if key not in clashing:                               # other pixels under the same hash: neither picture is used
+                        clashing.add(key)
+                        scan.pictures = [p for p in scan.pictures if p.hash != key]
+                        scan.refused.append((first, 'has the hash of %s but other pixels; keep one of them' % file))
+                    scan.refused.append((file, 'has the hash of %s but other pixels; keep one of them' % first))
                 continue
-            seen[key] = file
+            seen[key] = (file, current)
             scan.unsigned += 0 if signed else 1
             scan.pictures.append(Picture(key, file, paths[file], w, h, ow, oh, alpha, signed))
     scan.pictures.sort(key=lambda p: p.hash)
